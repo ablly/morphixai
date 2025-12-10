@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { CreditsService, GENERATION_COSTS, ADVANCED_OPTIONS_COSTS, calculateTotalCost, type GenerationMode, type QualityLevel, type AdvancedOption } from '@/lib/credits/service';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { tripo3d, isTripoConfigured, Tripo3DError, type GenerationConfig } from '@/lib/tripo3d/service';
+import { r2, isR2Configured, uploadModelToR2, uploadThumbnailToR2 } from '@/lib/r2/service';
 
 // 生产环境日志
 const log = {
@@ -399,13 +400,47 @@ async function processTripo3DGeneration(generationId: string, supabase: any, opt
       hasModel: !!finalModelUrl 
     });
 
+    // 持久化存储到 R2 (如果配置了)
+    let persistedModelUrl = finalModelUrl;
+    let persistedThumbnailUrl = thumbnailUrl;
+
+    if (isR2Configured() && finalModelUrl) {
+      log.info('Uploading model to R2', { generationId });
+      
+      // 从 generation 记录获取 user_id
+      const { data: genData } = await supabase
+        .from('generations')
+        .select('user_id')
+        .eq('id', generationId)
+        .single();
+
+      if (genData?.user_id) {
+        // 上传模型到 R2
+        const modelResult = await uploadModelToR2(finalModelUrl, genData.user_id, options.format || 'glb');
+        if (modelResult.success && modelResult.url) {
+          persistedModelUrl = modelResult.url;
+          log.info('Model uploaded to R2', { url: persistedModelUrl });
+        } else {
+          log.warn('Failed to upload model to R2, using original URL', { error: modelResult.error });
+        }
+
+        // 上传缩略图到 R2
+        if (thumbnailUrl) {
+          const thumbResult = await uploadThumbnailToR2(thumbnailUrl, genData.user_id);
+          if (thumbResult.success && thumbResult.url) {
+            persistedThumbnailUrl = thumbResult.url;
+          }
+        }
+      }
+    }
+
     // 更新生成记录
     await supabase
       .from('generations')
       .update({ 
         status: 'COMPLETED',
-        model_url: finalModelUrl,
-        thumbnail_url: thumbnailUrl,
+        model_url: persistedModelUrl,
+        thumbnail_url: persistedThumbnailUrl,
         completed_at: new Date().toISOString(),
         processing_time_ms: processingTime,
       })

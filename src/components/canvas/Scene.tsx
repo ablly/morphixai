@@ -2,7 +2,7 @@
 
 import { Canvas } from '@react-three/fiber';
 import { Suspense } from 'react';
-import { Hero3D } from './Hero3D';
+import { Hero3DGLB } from './Hero3DGLB';
 import { Stars, Sparkles } from '@react-three/drei';
 
 export function Scene() {
@@ -59,9 +59,8 @@ export function Scene() {
 
 
                     {/* Main Model */}
-                    <Hero3D
-                        modelPath="https://pub-d44e2806840e42c194f44fa4890842da.r2.dev/model.obj"
-                        materialPath="https://pub-d44e2806840e42c194f44fa4890842da.r2.dev/material.mtl"
+                    <Hero3DGLB
+                        modelPath="https://pub-d44e2806840e42c194f44fa4890842da.r2.dev/hitem3d.glb"
                     />
                 </Suspense>
             </Canvas>

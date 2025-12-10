@@ -36,6 +36,14 @@ yarn-error.log*
 # vercel
 .vercel
 
+# credentials (OAuth secrets)
+.credentials/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Large 3D model files (use cloud storage instead)
+hitem3d/
+*.obj
+*.mtl

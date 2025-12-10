@@ -1,0 +1,360 @@
+{
+    "Nav": {
+        "home": "HOME",
+        "features": "FEATURES",
+        "pricing": "PRICING",
+        "about": "ABOUT",
+        "login": "LOGIN",
+        "signup": "SIGN UP",
+        "dashboard": "DASHBOARD",
+        "create": "CREATE",
+        "settings": "SETTINGS",
+        "logout": "LOGOUT"
+    },
+    "Footer": {
+        "copyright": "© 2025 MORPHIX AI. ALL RIGHTS RESERVED.",
+        "twitter": "TWITTER",
+        "discord": "DISCORD",
+        "github": "GITHUB"
+    },
+    "Hero": {
+        "title": "NEURAL GEOMETRY ENGINE",
+        "subtitle": "FROM IMAGINATION TO VOXEL REALITY",
+        "description": "Morphix AI utilizes advanced neural rendering protocols to transmute 2D visual data into high-fidelity 3D topological structures. Experience the next evolution of digital synthesis.",
+        "cta": "INITIALIZE GENERATION",
+        "demo": "VIEW DEMO"
+    },
+    "Features": {
+        "title": "CORE PROTOCOLS",
+        "description": "Our proprietary algorithms ensure maximum geometric integrity and texture fidelity.",
+        "coreFeatures": "CORE FEATURES",
+        "techSpecs": "TECHNICAL SPECIFICATIONS",
+        "exportFormats": "EXPORT FORMATS",
+        "useCases": "USE CASES",
+        "core1_title": "Neural Synthesis",
+        "core1_desc": "Deep learning models analyze topological depth for accurate mesh reconstruction.",
+        "core2_title": "Real-time Rendering",
+        "core2_desc": "Instantaneous visualization of generated assets in our WebGL-powered viewport.",
+        "core3_title": "Universal Export",
+        "core3_desc": "Seamless integration with industry-standard pipelines (OBJ, GLB, FBX).",
+        "tech1_title": "Voxel Precision",
+        "tech1_desc": "High-density voxel grids ensure sub-millimeter accuracy.",
+        "tech2_title": "Layered Textures",
+        "tech2_desc": "Multi-channel PBR maps for realistic material properties.",
+        "tech3_title": "Color Fidelity",
+        "tech3_desc": "AI-driven color matching for true-to-life texture generation.",
+        "use1_title": "3D Printing",
+        "use1_desc": "Watertight meshes ready for additive manufacturing.",
+        "use2_title": "Game Assets",
+        "use2_desc": "Optimized topology for real-time game engines.",
+        "use3_title": "Animation",
+        "use3_desc": "Rig-ready structures for character animation."
+    },
+    "TechSpecs": {
+        "title": "SYSTEM SPECIFICATIONS",
+        "vertex": "VERTEX PRECISION: 32-BIT FLOAT",
+        "uv": "UV MAPPING: AUTOMATED UNWRAP",
+        "pbr": "MATERIAL SYSTEM: PBR WORKFLOW",
+        "export": "EXPORT FORMATS: GLB / OBJ / USDZ"
+    },
+    "Pricing": {
+        "title": "ACCESS TIERS",
+        "subtitle": "Bigger packs = Better value. Save up to 68%",
+        "tabs": {
+            "credits": "CREDIT PACKS",
+            "subscription": "SUBSCRIPTION"
+        },
+        "firstPurchase": "🎁 15% OFF YOUR FIRST PURCHASE",
+        "popular": "MOST POPULAR",
+        "bestValue": "BEST VALUE",
+        "creditsUnit": "Credits",
+        "perMonth": "/ mo",
+        "save": "Save",
+        "actions": {
+            "buyNow": "BUY NOW",
+            "subscribe": "SUBSCRIBE"
+        },
+        "costs": {
+            "title": "GENERATION COST REFERENCE",
+            "standard": "Standard Quality",
+            "high": "High Quality",
+            "ultra": "Ultra Quality",
+            "multiView": "Multi-View (Extra)"
+        },
+        "packages": {
+            "starter": {
+                "name": "TRIAL",
+                "description": "First taste of AI magic",
+                "features": [
+                    "20 Credits",
+                    "~2 Standard Generations",
+                    "Basic Render Speed",
+                    "Community Support",
+                    "Personal Use License"
+                ]
+            },
+            "basic": {
+                "name": "CREATOR",
+                "description": "Save 40% | For individual creators",
+                "features": [
+                    "100 Credits",
+                    "~10 Standard Generations",
+                    "Standard Render Speed",
+                    "Email Support",
+                    "Commercial License"
+                ]
+            },
+            "standard": {
+                "name": "PROFESSIONAL",
+                "description": "🔥 Save 60% | Best Value",
+                "features": [
+                    "300 Credits",
+                    "~30 Standard Generations",
+                    "Priority Render Queue",
+                    "Priority Support",
+                    "Full Commercial License"
+                ]
+            },
+            "pro": {
+                "name": "STUDIO",
+                "description": "💎 Save 68% | For bulk creation",
+                "features": [
+                    "1000 Credits",
+                    "~100 Standard Generations",
+                    "Turbo Render Pipeline",
+                    "Dedicated Account Manager",
+                    "Enterprise License"
+                ]
+            },
+            "proMonthly": {
+                "name": "CREATOR SUB",
+                "description": "Consistent monthly credits",
+                "features": [
+                    "200 Credits/month",
+                    "Unused Credits Roll Over",
+                    "Priority Render Queue",
+                    "Priority Support",
+                    "Commercial License"
+                ]
+            },
+            "teamMonthly": {
+                "name": "TEAM SUB",
+                "description": "🏆 Best for teams",
+                "features": [
+                    "500 Credits/month",
+                    "Unused Credits Roll Over",
+                    "Turbo Render Pipeline",
+                    "Dedicated Account Manager",
+                    "Enterprise License"
+                ]
+            }
+        }
+    },
+    "About": {
+        "hero": {
+            "title": "ARCHITECTING THE IMAGINATION AGE",
+            "subtitle": "We are building the neural bridges between thought and reality."
+        },
+        "story": {
+            "title": "THE GENESIS PROTOCOL",
+            "p1": "Morphix AI was born from a singularity: the realization that the barrier between human imagination and digital creation is merely a computational problem. We set out to solve it.",
+            "p2": "Our team of neural architects and geometry engineers have spent years refining the algorithms that power our core. We don't just generate 3D models; we synthesize digital matter from pure conceptual data."
+        },
+        "values": {
+            "title": "CORE DIRECTIVES",
+            "v1_title": "Innovation",
+            "v1_desc": "Pushing the boundaries of what's computationally possible.",
+            "v2_title": "Precision",
+            "v2_desc": "Absolute fidelity in every vertex and polygon.",
+            "v3_title": "Empowerment",
+            "v3_desc": "Democratizing the power of 3D creation for all entities.",
+            "v4_title": "Global",
+            "v4_desc": "Connecting creators across the digital metaverse."
+        },
+        "contact": {
+            "title": "ESTABLISH UPLINK",
+            "subtitle": "Ready to integrate Morphix into your workflow? Initialize communication."
+        }
+    },
+    "CTA": {
+        "title": "READY TO MATERIALIZE?",
+        "button": "START CREATING"
+    },
+    "Create": {
+        "title": "CREATE NEW MODEL",
+        "placeholder": "Create functionality coming soon...",
+        "uploadTitle": "Upload Reference Image",
+        "uploadDesc": "Drag & drop or click to browse",
+        "quality": "Generation Quality",
+        "generate": "GENERATE MODEL",
+        "cost": "Estimated Cost",
+        "generating": "Generating...",
+        "download": "Download Model",
+        "autoRotate": "Auto Rotate",
+        "qualities": {
+            "standard": "Standard",
+            "high": "High",
+            "ultra": "Ultra"
+        },
+        "commandCenter": "Command Center v3.0",
+        "textPrompt": "Text Prompt",
+        "textPlaceholder": "Describe your 3D model, e.g., a cute cartoon cat...",
+        "referenceImage": "Reference Image",
+        "format": "Format",
+        "systemLogs": "SYSTEM_LOGS",
+        "waitingInput": "Waiting for input...",
+        "initialize": "INITIALIZE GENERATION",
+        "processing": "PROCESSING...",
+        "downloadBtn": "Download",
+        "awaitingInput": "AWAITING INPUT DATA",
+        "yourCredits": "Your Credits",
+        "insufficientCredits": "Insufficient credits, please top up first",
+        "modes": {
+            "title": "Generation Mode",
+            "imageToModel": "Image to 3D",
+            "textToModel": "Text to 3D",
+            "multiView": "Multi-view",
+            "doodle": "Doodle to 3D"
+        },
+        "advancedOptions": {
+            "title": "Advanced Options",
+            "hdTexture": "HD Texture",
+            "pbrMaterial": "PBR Material",
+            "rigging": "Rigging",
+            "lowPoly": "Smart Low-poly",
+            "partSegment": "Part Segment"
+        },
+        "station": "Create Station",
+        "version": "MORPHIX.AI // v3.0",
+        "lowCredits": "Low credits - Top up",
+        "waiting": "Waiting...",
+        "multiViewUpload": "Multi-view Images (2-6)",
+        "doodleImage": "Doodle Image",
+        "doodleHint": "Upload a simple doodle or sketch, AI will convert it to 3D",
+        "textHint": "Describe the 3D model you want to generate",
+        "multiViewHint": "{count}/6 images selected (minimum 2 required)",
+        "costBreakdown": "Cost Breakdown",
+        "base": "Base"
+    },
+    "Demo": {
+        "title": "MODEL SHOWCASE",
+        "subtitle": "Experience the power of Morphix AI",
+        "remix": "REMIX THIS MODEL"
+    },
+    "Settings": {
+        "title": "SYSTEM SETTINGS",
+        "placeholder": "Settings functionality coming soon...",
+        "tabs": {
+            "profile": "PROFILE",
+            "account": "ACCOUNT",
+            "billing": "BILLING"
+        },
+        "profile": {
+            "title": "PROFILE IDENTITY",
+            "avatar": "AVATAR",
+            "upload": "UPLOAD NEW",
+            "name": "DISPLAY NAME",
+            "bio": "BIO / DESCRIPTION",
+            "save": "SAVE CHANGES"
+        },
+        "account": {
+            "title": "ACCOUNT SECURITY",
+            "subtitle": "Manage your account security and credentials.",
+            "email": "EMAIL ADDRESS",
+            "password": "PASSWORD",
+            "changePassword": "CHANGE PASSWORD",
+            "currentPassword": "Current Password",
+            "newPassword": "New Password",
+            "updatePassword": "Update Password",
+            "delete": "DELETE ACCOUNT",
+            "deleteDesc": "Permanently remove your identity from the system."
+        },
+        "preferences": {
+            "title": "SYSTEM PREFERENCES",
+            "language": "INTERFACE LANGUAGE",
+            "theme": "INTERFACE THEME",
+            "notifications": "NOTIFICATIONS",
+            "emailNotif": "Email Notifications",
+            "pushNotif": "Push Notifications"
+        },
+        "billing": {
+            "title": "BILLING & SUBSCRIPTION",
+            "subtitle": "Manage your subscription and billing history.",
+            "currentPlan": "CURRENT PLAN",
+            "freePlan": "Free Plan",
+            "forever": "forever",
+            "active": "ACTIVE",
+            "paymentMethods": "PAYMENT METHODS",
+            "invoices": "INVOICE HISTORY",
+            "noInvoices": "No billing history yet.",
+            "upgrade": "UPGRADE PLAN",
+            "manage": "MANAGE",
+            "paid": "Paid"
+        },
+        "referrals": {
+            "title": "REFERRAL PROGRAM",
+            "subtitle": "Invite friends and earn 5 credits each! (Max {max} invites, up to 50 credits)",
+            "totalEarned": "TOTAL EARNED",
+            "friendsInvited": "FRIENDS INVITED",
+            "remainingInvites": "REMAINING INVITES",
+            "rewardPerInvite": "REWARD PER INVITE",
+            "credits": "Credits",
+            "uniqueLink": "Your Unique Link",
+            "shareLinkDesc": "Share this link to earn credits when friends sign up.",
+            "copy": "Copy",
+            "copied": "Copied!",
+            "history": "Referral History",
+            "noReferrals": "No referrals yet. Share your link to get started!",
+            "joined": "Joined"
+        }
+    },
+    "Dashboard": {
+        "title": "DASHBOARD",
+        "credits": "Credits",
+        "createFirst": "Create New Model",
+        "search": "Search models...",
+        "noModels": "No models generated yet",
+        "noModelsDesc": "Start your first generation to see it here.",
+        "download": "Download"
+    },
+    "Auth": {
+        "login": "SYSTEM LOGIN",
+        "loginSubtitle": "Enter your credentials to access the neural network.",
+        "signup": "INITIATE REGISTRATION",
+        "signupSubtitle": "Create a new identity in the Morphix system.",
+        "email": "IDENTITY (EMAIL)",
+        "password": "ACCESS CODE (PASSWORD)",
+        "confirmPassword": "CONFIRM ACCESS CODE",
+        "referralCode": "REFERRAL CODE",
+        "optional": "OPTIONAL",
+        "forgotPassword": "Forgot Password?",
+        "loginButton": "AUTHENTICATE",
+        "signupButton": "REGISTER IDENTITY",
+        "githubButton": "ACCESS VIA GITHUB",
+        "googleButton": "ACCESS VIA GOOGLE",
+        "noAccount": "No identity found?",
+        "hasAccount": "Already identified?",
+        "signupLink": "Create Identity",
+        "loginLink": "Login",
+        "welcomeBonus": "Welcome bonus included",
+        "checkEmail": "Check your email",
+        "confirmationSent": "We've sent a confirmation link to your email address.",
+        "backToLogin": "Back to Login",
+        "passwordMismatch": "Passwords do not match",
+        "passwordTooShort": "Password must be at least 6 characters",
+        "loading": "Processing..."
+    },
+    "ViewerControls": {
+        "renderMode": "RENDER MODE",
+        "lighting": "LIGHTING",
+        "autoRotate": "AUTO ROTATE",
+        "on": "ON",
+        "off": "OFF",
+        "modes": {
+            "solid": "Solid",
+            "wireframe": "Wire",
+            "points": "Points",
+            "liquid": "Liquid"
+        }
+    }
+}

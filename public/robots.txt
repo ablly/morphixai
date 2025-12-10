@@ -1,0 +1,21 @@
+# Morphix AI - Robots.txt
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://morphix.ai/sitemap.xml
+
+# Disallow admin and API routes
+Disallow: /api/
+Disallow: /auth/
+Disallow: /_next/
+
+# Allow search engines to crawl main pages
+Allow: /en/
+Allow: /zh/
+Allow: /en/features
+Allow: /en/pricing
+Allow: /en/about
+Allow: /zh/features
+Allow: /zh/pricing
+Allow: /zh/about

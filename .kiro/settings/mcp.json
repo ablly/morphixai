@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "supabase-morphix": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--access-token",
+        "sbp_da58d5786efc661b0907fde26d18987c09c22a2e"
+      ],
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}

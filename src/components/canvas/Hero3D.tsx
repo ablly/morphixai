@@ -124,7 +124,6 @@ export function Hero3D({ modelPath, materialPath }: Hero3DProps) {
         return createColoredShaders(texture);
     }, [texture]);
 
-
     useFrame((state, delta) => {
         const newTime = time + delta;
         setTime(newTime);
@@ -175,9 +174,6 @@ export function Hero3D({ modelPath, materialPath }: Hero3DProps) {
 
         // 平滑过渡材质透明度
         if (meshRef.current) {
-            // 计算目标透明度：
-            // 向下滚动：phase 0-0.3 完全显示，0.3-0.8 快速渐隐
-            // 向上滚动：phase 4.5-5.0 缓慢渐显（粒子聚合完成后）
             let targetOpacity = 1;
             if (smoothedPhase.current >= 0.3 && smoothedPhase.current < 0.8) {
                 targetOpacity = 1 - (smoothedPhase.current - 0.3) / 0.5;
@@ -187,18 +183,15 @@ export function Hero3D({ modelPath, materialPath }: Hero3DProps) {
                 targetOpacity = Math.min((smoothedPhase.current - 4) / 0.5, 1);
             }
             
-            // 渐隐快速，渐显缓慢
             const lerpSpeed = targetOpacity > smoothedOpacity.current ? 0.03 : 0.08;
             smoothedOpacity.current = THREE.MathUtils.lerp(smoothedOpacity.current, targetOpacity, lerpSpeed);
             
-            // 应用透明度到所有材质
             meshRef.current.traverse((child) => {
                 if ((child as THREE.Mesh).isMesh) {
                     const mesh = child as THREE.Mesh;
                     const mat = mesh.material as THREE.MeshStandardMaterial;
                     if (mat) {
                         mat.opacity = smoothedOpacity.current;
-                        // 当透明度很低时隐藏以提高性能
                         mesh.visible = smoothedOpacity.current > 0.01;
                     }
                 }

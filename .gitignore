@@ -43,7 +43,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Large 3D model files (use cloud storage instead)
+# hitem3d folder (duplicate of public/models)
 hitem3d/
-*.obj
-*.mtl

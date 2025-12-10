@@ -6,12 +6,15 @@ import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { createColoredShaders } from './shaders';
 
+// Configure DRACO decoder path for compressed GLB files
+useGLTF.preload.bind(null);
+
 interface Hero3DGLBProps {
     modelPath: string;
 }
 
 export function Hero3DGLB({ modelPath }: Hero3DGLBProps) {
-    const { scene } = useGLTF(modelPath);
+    const { scene } = useGLTF(modelPath, '/draco/');
     
     // Clone the scene to avoid modifying the cached original
     const clonedScene = useMemo(() => scene.clone(), [scene]);

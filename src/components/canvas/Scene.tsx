@@ -60,7 +60,7 @@ export function Scene() {
 
                     {/* Main Model */}
                     <Hero3DGLB
-                        modelPath="https://models.morphix-ai.com/hitem3d.glb"
+                        modelPath="/models/hitem3d-v2.glb"
                     />
                 </Suspense>
             </Canvas>

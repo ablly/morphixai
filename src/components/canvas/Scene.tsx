@@ -60,8 +60,8 @@ export function Scene() {
 
                     {/* Main Model */}
                     <Hero3D
-                        modelPath="/models/model.obj"
-                        materialPath="/models/material.mtl"
+                        modelPath="https://pub-d44e2806840e42c194f44fa4890842da.r2.dev/model.obj"
+                        materialPath="https://pub-d44e2806840e42c194f44fa4890842da.r2.dev/material.mtl"
                     />
                 </Suspense>
             </Canvas>

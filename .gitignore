@@ -45,3 +45,7 @@ next-env.d.ts
 
 # hitem3d folder (duplicate of public/models)
 hitem3d/
+
+# Documentation files (keep local only)
+*.md
+!README.md

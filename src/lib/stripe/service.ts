@@ -2,18 +2,18 @@ import { stripe } from './server';
 import { createClient } from '@/lib/supabase/server';
 import type Stripe from 'stripe';
 
-// 积分套餐配置 (价格策略：高套餐单价更低，鼓励大额购买)
+// 积分套餐配置 (Fal.ai SAM 3D 策略: 高利润率)
+// 成本: $0.02/生成, 售价: $0.09/生成 (9积分), 利润率: 350%
 export const CREDIT_PACKAGES = {
-  starter: { credits: 20, priceUsd: 4.99 },    // $0.25/积分
-  basic: { credits: 100, priceUsd: 14.99 },    // $0.15/积分 (省40%)
-  standard: { credits: 300, priceUsd: 29.99 }, // $0.10/积分 (省60%)
-  pro: { credits: 1000, priceUsd: 79.99 },     // $0.08/积分 (省68%)
+  starter: { credits: 1000, priceUsd: 9.90 },   // ~110 models, $0.0099/credit
+  creator: { credits: 3500, priceUsd: 29.90 },  // ~380 models, $0.0085/credit (15% off)
+  pro: { credits: 12000, priceUsd: 99.90 },     // ~1330 models, $0.0083/credit (20% off)
 } as const;
 
-// 订阅套餐配置
+// 订阅套餐配置 (暂时禁用，专注于积分包)
 export const SUBSCRIPTION_PACKAGES = {
-  proMonthly: { credits: 200, priceUsd: 19.99 },  // $0.10/积分
-  teamMonthly: { credits: 500, priceUsd: 39.99 }, // $0.08/积分
+  proMonthly: { credits: 200, priceUsd: 19.99 },
+  teamMonthly: { credits: 500, priceUsd: 39.99 },
 } as const;
 
 export const FIRST_PURCHASE_DISCOUNT = 0.85; // 首单 85 折
@@ -57,12 +57,29 @@ export class StripeService {
     cancelUrl: string
   ): Promise<{ sessionId: string; url: string } | null> {
     const pkg = CREDIT_PACKAGES[packageId];
-    if (!pkg) return null;
+    if (!pkg) {
+      console.error('Invalid package ID:', packageId);
+      return null;
+    }
 
     const isFirst = await this.isFirstPurchase(userId);
     const finalPrice = isFirst 
       ? Math.round(pkg.priceUsd * FIRST_PURCHASE_DISCOUNT * 100) 
       : Math.round(pkg.priceUsd * 100);
+
+    // 套餐名称映射
+    const packageNames: Record<string, string> = {
+      starter: 'Starter',
+      creator: 'Creator',
+      pro: 'Pro',
+    };
+
+    // 套餐描述
+    const packageDescriptions: Record<string, string> = {
+      starter: `${pkg.credits} credits (~110 models) - The Hobbyist`,
+      creator: `${pkg.credits} credits (~380 models) - The Pro`,
+      pro: `${pkg.credits} credits (~1330 models) - The Studio`,
+    };
 
     try {
       const session = await stripe.checkout.sessions.create({
@@ -73,8 +90,8 @@ export class StripeService {
             price_data: {
               currency: 'usd',
               product_data: {
-                name: `${packageId.charAt(0).toUpperCase() + packageId.slice(1)} Credits Pack`,
-                description: `${pkg.credits} credits for Morphix AI`,
+                name: `Morphix AI ${packageNames[packageId] || packageId} Pack`,
+                description: packageDescriptions[packageId] || `${pkg.credits} credits for Morphix AI`,
               },
               unit_amount: finalPrice,
             },
@@ -187,6 +204,35 @@ export class StripeService {
       description: `Purchased ${packageId} package (${creditAmount} credits)`,
       reference_id: session.id,
     });
+
+    // 更新用户 plan_tier (根据购买的套餐)
+    const planTierMap: Record<string, string> = {
+      starter: 'starter',
+      creator: 'creator',
+      pro: 'pro',
+    };
+    
+    const newPlanTier = planTierMap[packageId as string];
+    if (newPlanTier) {
+      // 只升级，不降级 (pro > creator > starter > free)
+      const tierPriority: Record<string, number> = { free: 0, starter: 1, creator: 2, pro: 3 };
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('plan_tier')
+        .eq('id', userId)
+        .single();
+      
+      const currentTier = profile?.plan_tier || 'free';
+      if (tierPriority[newPlanTier] > tierPriority[currentTier]) {
+        await supabase
+          .from('profiles')
+          .update({ plan_tier: newPlanTier })
+          .eq('id', userId);
+        
+        console.log(`[Stripe] Upgraded user ${userId} from ${currentTier} to ${newPlanTier}`);
+      }
+    }
 
     // 标记首次购买已使用
     if (isFirstPurchase === 'true') {

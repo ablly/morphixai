@@ -12,7 +12,7 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import { DashboardSkeleton } from '@/components/ui/skeleton';
 import { LazyImage } from '@/components/ui/lazy-image';
 import { useKeyboardShortcuts, COMMON_SHORTCUTS } from '@/hooks/useKeyboardShortcuts';
-import { Plus, Search, Download, Trash2, Share2, Coins, ArrowLeft, Gift, X, Filter, SortDesc } from 'lucide-react';
+import { Plus, Search, Download, Trash2, Share2, Coins, ArrowLeft, Gift, X, Filter, SortDesc, Shield } from 'lucide-react';
 
 interface Generation {
   id: string;
@@ -24,6 +24,7 @@ interface Generation {
   created_at: string;
   mode?: string;
   output_format?: string;
+  has_license?: boolean;
 }
 
 export default function DashboardPage() {
@@ -95,6 +96,36 @@ export default function DashboardPage() {
       }
 
       try {
+        // 检查并处理邀请码 (首次登录时)
+        const referralCode = user.user_metadata?.referral_code;
+        if (referralCode) {
+          // 检查是否已经处理过邀请
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('referred_by')
+            .eq('id', user.id)
+            .single();
+          
+          // 如果还没有处理过邀请码
+          if (!profile?.referred_by) {
+            try {
+              const res = await fetch('/api/referral', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ referralCode }),
+              });
+              
+              if (res.ok) {
+                addToast('success', locale === 'zh' 
+                  ? '🎉 邀请奖励已发放！你和邀请人各获得 5 积分！' 
+                  : '🎉 Referral bonus applied! You and your referrer each got 5 credits!');
+              }
+            } catch (err) {
+              console.error('Failed to process referral:', err);
+            }
+          }
+        }
+
         // 获取积分
         const { data: creditsData, error: creditsError } = await supabase
           .from('user_credits')
@@ -171,9 +202,114 @@ export default function DashboardPage() {
     setDeleting(null);
   };
 
-  const handleDownload = (modelUrl: string | null) => {
-    if (!modelUrl) return;
-    window.open(modelUrl, '_blank');
+  const handleDownload = async (generation: Generation) => {
+    if (!generation.model_url || generation.status !== 'COMPLETED') return;
+    
+    try {
+      // Call download API to handle credits and verification
+      const res = await fetch('/api/generate/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ generationId: generation.id })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 402) {
+          addToast('error', data.error || (locale === 'zh' ? '积分不足，无法下载' : 'Insufficient credits to download'));
+          return;
+        }
+        throw new Error(data.error || 'Download failed');
+      }
+
+      // Download the file
+      const link = document.createElement('a');
+      link.href = data.modelUrl;
+      link.download = `morphix-${generation.mode || 'model'}-${Date.now()}.glb`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Update credits if charged
+      if (data.charged) {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: creditsData } = await supabase
+            .from('user_credits')
+            .select('balance')
+            .eq('user_id', user.id)
+            .single();
+          if (creditsData) setCredits(creditsData.balance);
+        }
+        addToast('success', locale === 'zh' ? '下载成功，已扣除5积分' : 'Download successful, 5 credits deducted');
+      } else {
+        addToast('success', locale === 'zh' ? '下载成功 (Creator/Pro 免费下载)' : 'Download successful (Free for Creator/Pro)');
+      }
+    } catch (err: any) {
+      console.error('Download error:', err);
+      addToast('error', err.message || (locale === 'zh' ? '下载失败' : 'Download failed'));
+    }
+  };
+
+  const handlePurchaseLicense = async (generation: Generation) => {
+    if (generation.status !== 'COMPLETED' || generation.has_license) return;
+    
+    const confirmed = await confirm({
+      title: locale === 'zh' ? '购买商用授权' : 'Purchase Commercial License',
+      message: locale === 'zh' 
+        ? '商用授权需要 100 积分。购买后您将获得可打印的授权证书，允许您将此模型用于商业用途。' 
+        : 'Commercial license costs 100 credits. You will receive a printable license certificate allowing commercial use of this model.',
+      confirmText: locale === 'zh' ? '购买 (100积分)' : 'Purchase (100 credits)',
+      cancelText: locale === 'zh' ? '取消' : 'Cancel',
+      variant: 'info',
+    });
+    
+    if (!confirmed) return;
+    
+    try {
+      const res = await fetch('/api/generate/license', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ generationId: generation.id })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 402) {
+          addToast('error', data.error || (locale === 'zh' ? '积分不足' : 'Insufficient credits'));
+          return;
+        }
+        throw new Error(data.error || 'License purchase failed');
+      }
+
+      // Update generation in state
+      setGenerations(prev => prev.map(g => 
+        g.id === generation.id ? { ...g, has_license: true } : g
+      ));
+
+      // Refresh credits
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: creditsData } = await supabase
+          .from('user_credits')
+          .select('balance')
+          .eq('user_id', user.id)
+          .single();
+        if (creditsData) setCredits(creditsData.balance);
+      }
+
+      addToast('success', locale === 'zh' ? '商用授权购买成功！' : 'Commercial license purchased!');
+      
+      // Open license page
+      window.open(`/${locale}/license/${generation.id}`, '_blank');
+    } catch (err: any) {
+      console.error('License error:', err);
+      addToast('error', err.message || (locale === 'zh' ? '购买失败' : 'Purchase failed'));
+    }
   };
 
   if (loading) {
@@ -353,7 +489,7 @@ export default function DashboardPage() {
                     {/* Actions */}
                     <div className="flex items-center space-x-2">
                       <button 
-                        onClick={() => handleDownload(generation.model_url)}
+                        onClick={() => handleDownload(generation)}
                         disabled={generation.status !== 'COMPLETED' || !generation.model_url}
                         className="flex-1 flex items-center justify-center space-x-1 py-2 bg-white/10 rounded-lg text-white text-sm hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
@@ -367,9 +503,29 @@ export default function DashboardPage() {
                         }}
                         disabled={generation.status !== 'COMPLETED'}
                         className="p-2 bg-white/10 rounded-lg text-white hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={locale === 'zh' ? '分享' : 'Share'}
                       >
                         <Share2 className="w-4 h-4" />
                       </button>
+                      {generation.has_license ? (
+                        <Link href={`/${locale}/license/${generation.id}`} target="_blank">
+                          <button 
+                            className="p-2 bg-green-500/20 rounded-lg text-green-400 hover:bg-green-500/30 transition-colors"
+                            title={locale === 'zh' ? '查看授权' : 'View License'}
+                          >
+                            <Shield className="w-4 h-4" />
+                          </button>
+                        </Link>
+                      ) : (
+                        <button 
+                          onClick={() => handlePurchaseLicense(generation)}
+                          disabled={generation.status !== 'COMPLETED'}
+                          className="p-2 bg-white/10 rounded-lg text-yellow-400 hover:bg-yellow-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={locale === 'zh' ? '购买商用授权 (100积分)' : 'Buy Commercial License (100 credits)'}
+                        >
+                          <Shield className="w-4 h-4" />
+                        </button>
+                      )}
                       <button 
                         onClick={() => handleDelete(generation.id)}
                         disabled={deleting === generation.id}

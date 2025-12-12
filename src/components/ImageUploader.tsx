@@ -1,30 +1,41 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, X, Image as ImageIcon, FileUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ImageUploaderProps {
     onFileSelect: (file: File | null) => void;
+    onPreviewChange?: (previewUrl: string | null) => void;
+    initialPreview?: string | null;
     className?: string;
 }
 
-export function ImageUploader({ onFileSelect, className }: ImageUploaderProps) {
-    const [preview, setPreview] = useState<string | null>(null);
+export function ImageUploader({ onFileSelect, onPreviewChange, initialPreview, className }: ImageUploaderProps) {
+    const [preview, setPreview] = useState<string | null>(initialPreview || null);
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // 同步初始预览
+    useEffect(() => {
+        if (initialPreview && !preview) {
+            setPreview(initialPreview);
+        }
+    }, [initialPreview, preview]);
 
     const handleFile = useCallback((file: File) => {
         if (file && file.type.startsWith('image/')) {
             const reader = new FileReader();
             reader.onloadend = () => {
-                setPreview(reader.result as string);
+                const previewUrl = reader.result as string;
+                setPreview(previewUrl);
+                onPreviewChange?.(previewUrl);
             };
             reader.readAsDataURL(file);
             onFileSelect(file);
         }
-    }, [onFileSelect]);
+    }, [onFileSelect, onPreviewChange]);
 
     const onDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();
@@ -54,10 +65,11 @@ export function ImageUploader({ onFileSelect, className }: ImageUploaderProps) {
         e.stopPropagation();
         setPreview(null);
         onFileSelect(null);
+        onPreviewChange?.(null);
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
-    }, [onFileSelect]);
+    }, [onFileSelect, onPreviewChange]);
 
     return (
         <div className={cn("w-full", className)}>

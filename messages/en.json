@@ -76,76 +76,48 @@
         },
         "costs": {
             "title": "GENERATION COST REFERENCE",
-            "standard": "Standard Quality",
-            "high": "High Quality",
-            "ultra": "Ultra Quality",
-            "multiView": "Multi-View (Extra)"
+            "standard": "Standard Object",
+            "body": "Human Character",
+            "download": "Download Model (Starter)",
+            "private": "Private Mode",
+            "license": "Commercial License",
+            "priority": "Priority Queue"
         },
         "packages": {
             "starter": {
-                "name": "TRIAL",
-                "description": "First taste of AI magic",
+                "name": "STARTER",
+                "description": "The Hobbyist | ~110 Models",
                 "features": [
-                    "20 Credits",
-                    "~2 Standard Generations",
-                    "Basic Render Speed",
-                    "Community Support",
-                    "Personal Use License"
+                    "1,000 Credits",
+                    "~110 Generations",
+                    "Access to Object & Body Modes",
+                    "Standard Queue",
+                    "Public Models Only",
+                    "Pay-per-download (5 credits)"
                 ]
             },
-            "basic": {
+            "creator": {
                 "name": "CREATOR",
-                "description": "Save 40% | For individual creators",
+                "description": "The Pro | ~380 Models | 🔥 Most Popular",
                 "features": [
-                    "100 Credits",
-                    "~10 Standard Generations",
-                    "Standard Render Speed",
-                    "Email Support",
-                    "Commercial License"
-                ]
-            },
-            "standard": {
-                "name": "PROFESSIONAL",
-                "description": "🔥 Save 60% | Best Value",
-                "features": [
-                    "300 Credits",
-                    "~30 Standard Generations",
-                    "Priority Render Queue",
-                    "Priority Support",
-                    "Full Commercial License"
+                    "3,500 Credits",
+                    "~380 Generations",
+                    "✅ Free Unlimited Downloads",
+                    "✅ Priority Queue",
+                    "✅ Private Mode Access",
+                    "✅ Commercial License Available"
                 ]
             },
             "pro": {
-                "name": "STUDIO",
-                "description": "💎 Save 68% | For bulk creation",
+                "name": "PRO",
+                "description": "The Studio | ~1,330 Models | 💎 Best Value",
                 "features": [
-                    "1000 Credits",
-                    "~100 Standard Generations",
-                    "Turbo Render Pipeline",
-                    "Dedicated Account Manager",
-                    "Enterprise License"
-                ]
-            },
-            "proMonthly": {
-                "name": "CREATOR SUB",
-                "description": "Consistent monthly credits",
-                "features": [
-                    "200 Credits/month",
-                    "Unused Credits Roll Over",
-                    "Priority Render Queue",
-                    "Priority Support",
-                    "Commercial License"
-                ]
-            },
-            "teamMonthly": {
-                "name": "TEAM SUB",
-                "description": "🏆 Best for teams",
-                "features": [
-                    "500 Credits/month",
-                    "Unused Credits Roll Over",
-                    "Turbo Render Pipeline",
-                    "Dedicated Account Manager",
-                    "Enterprise License"
+                    "12,000 Credits",
+                    "~1,330 Generations",
+                    "✅ Free Unlimited Downloads",
+                    "✅ Ultra-Fast Priority Queue",
+                    "✅ Private Mode Included",
+                    "✅ 5 Free Commercial Licenses"
                 ]
             }
         }

@@ -33,6 +33,7 @@ export interface Profile {
   referral_code: string;
   referred_by: string | null;
   first_purchase_used: boolean;
+  plan_tier: PlanTier;
   created_at: string;
   updated_at: string;
 }
@@ -70,6 +71,10 @@ export interface CreditPackage {
   sort_order: number;
 }
 
+export type GenerationMode = 'OBJECT' | 'BODY' | 'IMAGE_TO_3D' | 'TEXT_TO_3D' | 'MULTI_VIEW' | 'DOODLE';
+
+export type PlanTier = 'free' | 'starter' | 'creator' | 'pro';
+
 export interface Generation {
   id: string;
   user_id: string;
@@ -82,6 +87,15 @@ export interface Generation {
   error_message: string | null;
   created_at: string;
   completed_at: string | null;
+  // Fal.ai specific fields
+  engine: string | null;
+  fal_request_id: string | null;
+  is_downloaded: boolean;
+  is_private: boolean;
+  has_license: boolean;
+  mode: GenerationMode | null;
+  metadata: Record<string, any> | null;
+  cost: number;
 }
 
 export interface Referral {

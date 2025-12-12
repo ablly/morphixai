@@ -98,6 +98,9 @@ class R2Service {
       // 创建签名
       const signature = await this.createSignature('PUT', key, contentType, date);
 
+      // Convert to Uint8Array for fetch compatibility
+      const uint8Array = data instanceof Uint8Array ? data : new Uint8Array(data);
+      
       const response = await fetch(url, {
         method: 'PUT',
         headers: {
@@ -105,7 +108,7 @@ class R2Service {
           'Date': date,
           'Authorization': `AWS ${this.config.accessKeyId}:${signature}`,
         },
-        body: data,
+        body: uint8Array as BodyInit,
       });
 
       if (!response.ok) {

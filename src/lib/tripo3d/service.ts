@@ -2,18 +2,23 @@
  * Tripo3D API Service - Production Ready
  * 
  * 官方文档: https://platform.tripo3d.ai/docs
- * 定价: https://www.tripo3d.ai/pricing
+ * 定价: https://platform.tripo3d.ai/docs/pricing
  * 
- * 功能支持:
- * - 文字转3D (Text-to-3D)
- * - 单图转3D (Image-to-3D)
- * - 多视角转3D (Multi-view to 3D)
- * - 涂鸦转3D (Doodle-to-3D) - 草图风格输入
- * - 高清纹理 (HD Texture)
- * - PBR材质 (PBR Material)
- * - 骨骼绑定 (Rigging)
- * - 智能低多边形 (Smart Low-poly)
- * - 部件分割 (Part Segmentation)
+ * 模型版本:
+ * - v3.0 (最新): 支持 text/image/texture 模式
+ * - v2.5, v2.0: 旧版本
+ * - Turbo V1.0: 快速模式
+ * - V1.4: 最新精细模型
+ * 
+ * 积分消耗 (2025):
+ * - 文字转3D: 无纹理7 / 标准纹理10 / 高清纹理20
+ * - 图片转3D: 无纹理7 / 标准纹理20 / 高清纹理30
+ * - 多视角转3D: 无纹理7 / 标准纹理20 / 高清纹理30
+ * - 骨骼绑定: 25
+ * - 分割: 40
+ * - 低多边形: 10
+ * - 重拓扑: 10
+ * - 精细几何: 20
  * 
  * 输出格式: GLB, FBX, OBJ, USDZ, STL
  */
@@ -22,11 +27,17 @@ const TRIPO_API_BASE = 'https://api.tripo3d.ai/v2/openapi';
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
 
+// 模型版本
+export type ModelVersion = 'v3.0' | 'v2.5' | 'v2.0-20240919' | 'turbo-v1.0' | 'v1.4';
+
 // 生成模式
 export type TripoGenerationMode = 'text_to_model' | 'image_to_model' | 'multiview_to_model';
 
 // 输出格式
 export type OutputFormat = 'glb' | 'fbx' | 'obj' | 'usdz' | 'stl';
+
+// 纹理质量
+export type TextureQuality = 'none' | 'standard' | 'detailed';
 
 // 生成配置
 export interface GenerationConfig {
@@ -34,13 +45,17 @@ export interface GenerationConfig {
   prompt?: string;
   image?: string;
   images?: string[];
-  texture_quality?: 'standard' | 'high';
+  model_version?: ModelVersion;
+  texture?: boolean; // false = 无纹理 (7积分)
+  texture_quality?: TextureQuality; // standard (默认) / detailed (高清)
   pbr?: boolean;
   auto_rig?: boolean;
   low_poly?: boolean;
   part_segment?: boolean;
   output_format?: OutputFormat;
   face_limit?: number;
+  quad?: boolean; // 四边形拓扑 +5积分
+  style?: string; // 风格化 +5积分
   // 涂鸦模式特殊参数
   sketch_mode?: boolean;
   style_prompt?: string;
@@ -156,14 +171,17 @@ class Tripo3DService {
 
   /**
    * 文字转3D
+   * 积分: 无纹理7 / 标准纹理10 / 高清纹理20
    */
   async textToModel(prompt: string, options: Partial<GenerationConfig> = {}): Promise<TaskResult> {
+    const modelVersion = options.model_version || 'v2.0-20240919';
+    
     const data = await this.request('/task', {
       method: 'POST',
       body: JSON.stringify({
         type: 'text_to_model',
         prompt,
-        model_version: 'v2.0-20240919',
+        model_version: modelVersion,
         ...this.buildOptions(options),
       }),
     });
@@ -176,8 +194,11 @@ class Tripo3DService {
 
   /**
    * 单图转3D
+   * 积分: 无纹理7 / 标准纹理20 / 高清纹理30
    */
   async imageToModel(imageUrl: string, options: Partial<GenerationConfig> = {}): Promise<TaskResult> {
+    const modelVersion = options.model_version || 'v2.0-20240919';
+    
     const data = await this.request('/task', {
       method: 'POST',
       body: JSON.stringify({
@@ -186,7 +207,7 @@ class Tripo3DService {
           type: 'url',
           url: imageUrl,
         },
-        model_version: 'v2.0-20240919',
+        model_version: modelVersion,
         ...this.buildOptions(options),
       }),
     });
@@ -199,11 +220,18 @@ class Tripo3DService {
 
   /**
    * 多视角转3D
+   * 积分: 无纹理7 / 标准纹理20 / 高清纹理30
+   * 注意: 不支持 Turbo-v1.0
    */
   async multiviewToModel(imageUrls: string[], options: Partial<GenerationConfig> = {}): Promise<TaskResult> {
     if (imageUrls.length < 2 || imageUrls.length > 6) {
       throw new Tripo3DError('Multi-view requires 2-6 images', 'INVALID_INPUT', 400, false);
     }
+
+    // 多视角不支持 Turbo 模式
+    const modelVersion = options.model_version === 'turbo-v1.0' 
+      ? 'v2.0-20240919' 
+      : (options.model_version || 'v2.0-20240919');
 
     const data = await this.request('/task', {
       method: 'POST',
@@ -213,7 +241,7 @@ class Tripo3DService {
           type: 'url',
           url,
         })),
-        model_version: 'v2.0-20240919',
+        model_version: modelVersion,
         ...this.buildOptions(options),
       }),
     });
@@ -226,7 +254,7 @@ class Tripo3DService {
 
   /**
    * 涂鸦/草图转3D (Doodle/Sketch to 3D)
-   * 使用 image_to_model 但启用草图模式
+   * 使用 image_to_model，适合简笔画/草图输入
    */
   async doodleToModel(imageUrl: string, stylePrompt?: string, options: Partial<GenerationConfig> = {}): Promise<TaskResult> {
     const data = await this.request('/task', {
@@ -237,12 +265,8 @@ class Tripo3DService {
           type: 'url',
           url: imageUrl,
         },
-        model_version: 'v2.0-20240919',
-        // 涂鸦模式使用更宽松的参数
-        ...this.buildOptions({
-          ...options,
-          sketch_mode: true,
-        }),
+        model_version: options.model_version || 'v2.0-20240919',
+        ...this.buildOptions(options),
         // 如果提供了风格提示词，添加到请求中
         ...(stylePrompt ? { prompt: stylePrompt } : {}),
       }),
@@ -369,25 +393,41 @@ class Tripo3DService {
 
   /**
    * 构建高级选项
+   * 根据 Tripo3D 2025 API 文档
    */
   private buildOptions(options: Partial<GenerationConfig>) {
     const result: Record<string, unknown> = {};
 
-    if (options.texture_quality === 'high') {
-      result.texture_quality = 'high';
-    }
-
-    if (options.pbr) {
+    // 纹理设置
+    // texture=false 且 pbr=false = 无纹理 (7积分)
+    // 默认 = 标准纹理 (10-20积分)
+    // texture_quality=detailed = 高清纹理 (20-30积分)
+    if (options.texture === false) {
+      result.texture = false;
+      result.pbr = false;
+    } else {
+      // 默认启用纹理和 PBR
+      result.texture = true;
       result.pbr = true;
+      
+      if (options.texture_quality === 'detailed') {
+        result.texture_quality = 'detailed';
+      }
     }
 
+    // 面数限制
     if (options.face_limit) {
       result.face_limit = options.face_limit;
     }
 
-    // 草图模式 - 更宽松的识别参数
-    if (options.sketch_mode) {
-      result.sketch_mode = true;
+    // 四边形拓扑 (+5积分)
+    if (options.quad) {
+      result.quad = true;
+    }
+
+    // 风格化 (+5积分)
+    if (options.style) {
+      result.style = options.style;
     }
 
     return result;

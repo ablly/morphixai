@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Copy, Check, Loader2 } from 'lucide-react';
+import { X, Copy, Check, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface ShareDialogProps {
@@ -14,7 +14,6 @@ interface ShareDialogProps {
     onShareComplete?: (platform: string, credits: number) => void;
 }
 
-// 社交平台图标
 const TwitterIcon = () => (
     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
         <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
@@ -45,65 +44,40 @@ const TikTokIcon = () => (
     </svg>
 );
 
+// 分享平台配置 - 移除积分奖励，只提供分享功能
 const platforms = [
-    { id: 'TWITTER', name: 'X', icon: TwitterIcon, credits: 5, color: 'bg-black hover:bg-zinc-800 border-zinc-700' },
-    { id: 'FACEBOOK', name: 'Facebook', icon: FacebookIcon, credits: 3, color: 'bg-[#1877F2]/10 hover:bg-[#1877F2]/20 border-[#1877F2]/30 text-[#1877F2]' },
-    { id: 'LINKEDIN', name: 'LinkedIn', icon: LinkedInIcon, credits: 5, color: 'bg-[#0A66C2]/10 hover:bg-[#0A66C2]/20 border-[#0A66C2]/30 text-[#0A66C2]' },
-    { id: 'REDDIT', name: 'Reddit', icon: RedditIcon, credits: 5, color: 'bg-[#FF4500]/10 hover:bg-[#FF4500]/20 border-[#FF4500]/30 text-[#FF4500]' },
-    { id: 'TIKTOK', name: 'TikTok', icon: TikTokIcon, credits: 5, color: 'bg-white/10 hover:bg-white/20 border-white/20 text-white' },
+    { id: 'TWITTER', name: 'X (Twitter)', icon: TwitterIcon, color: 'bg-black hover:bg-zinc-800 border-zinc-700' },
+    { id: 'FACEBOOK', name: 'Facebook', icon: FacebookIcon, color: 'bg-[#1877F2]/10 hover:bg-[#1877F2]/20 border-[#1877F2]/30 text-[#1877F2]' },
+    { id: 'LINKEDIN', name: 'LinkedIn', icon: LinkedInIcon, color: 'bg-[#0A66C2]/10 hover:bg-[#0A66C2]/20 border-[#0A66C2]/30 text-[#0A66C2]' },
+    { id: 'REDDIT', name: 'Reddit', icon: RedditIcon, color: 'bg-[#FF4500]/10 hover:bg-[#FF4500]/20 border-[#FF4500]/30 text-[#FF4500]' },
+    { id: 'TIKTOK', name: 'TikTok', icon: TikTokIcon, color: 'bg-white/10 hover:bg-white/20 border-white/20 text-white' },
 ];
 
-export function ShareDialog({ isOpen, onClose, generationId, modelUrl, onShareComplete }: ShareDialogProps) {
-    const [sharing, setSharing] = useState<string | null>(null);
-    const [shared, setShared] = useState<string[]>([]);
+export function ShareDialog({ isOpen, onClose, generationId, modelUrl }: ShareDialogProps) {
+    const locale = useLocale();
     const [copied, setCopied] = useState(false);
-
+    
     const shareUrl = modelUrl || `${typeof window !== 'undefined' ? window.location.origin : ''}/model/${generationId}`;
+    const shareText = 'Check out my 3D model created with Morphix AI! #MorphixAI #3D';
 
-    const handleShare = async (platformId: string) => {
-        if (shared.includes(platformId)) return;
-        
-        setSharing(platformId);
+    const handleShare = (platformId: string) => {
+        const urls: Record<string, string> = {
+            TWITTER: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`,
+            FACEBOOK: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+            LINKEDIN: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
+            REDDIT: `https://reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent('My 3D model created with Morphix AI')}`,
+            TIKTOK: shareUrl,
+        };
 
-        try {
-            // 调用分享API记录并获取积分
-            const res = await fetch('/api/social/share', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    platform: platformId,
-                    generationId,
-                    shareUrl,
-                }),
-            });
-
-            const data = await res.json();
-
-            if (res.ok && data.success) {
-                setShared(prev => [...prev, platformId]);
-                onShareComplete?.(platformId, data.creditsAwarded);
-            }
-
-            // 打开分享窗口
-            const platform = platforms.find(p => p.id === platformId);
-            if (platform) {
-                const urls: Record<string, string> = {
-                    TWITTER: `https://twitter.com/intent/tweet?text=${encodeURIComponent('Check out my 3D model created with Morphix AI! #MorphixAI')}&url=${encodeURIComponent(shareUrl)}`,
-                    FACEBOOK: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
-                    LINKEDIN: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
-                    REDDIT: `https://reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent('My 3D model created with Morphix AI')}`,
-                    TIKTOK: shareUrl,
-                };
-                
-                if (platformId !== 'TIKTOK') {
-                    window.open(urls[platformId], '_blank', 'width=600,height=400');
-                }
-            }
-        } catch (error) {
-            console.error('Share error:', error);
-        } finally {
-            setSharing(null);
+        if (platformId === 'TIKTOK') {
+            // TikTok 没有直接分享链接，复制链接
+            navigator.clipboard.writeText(shareUrl);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+            return;
         }
+
+        window.open(urls[platformId], '_blank', 'width=600,height=500,left=200,top=200');
     };
 
     const handleCopy = () => {
@@ -130,50 +104,43 @@ export function ShareDialog({ isOpen, onClose, generationId, modelUrl, onShareCo
                         className="w-full max-w-md bg-zinc-900 border border-white/10 rounded-2xl p-6 shadow-2xl"
                     >
                         <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-xl font-bold text-white">分享模型</h2>
-                            <button
-                                onClick={onClose}
-                                className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                            >
+                            <h2 className="text-xl font-bold text-white">
+                                {locale === 'zh' ? '分享模型' : 'Share Model'}
+                            </h2>
+                            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
                                 <X className="w-5 h-5 text-gray-400" />
                             </button>
                         </div>
 
                         <p className="text-gray-400 text-sm mb-6">
-                            分享到社交媒体可获得积分奖励！每个平台每个模型仅限一次。
+                            {locale === 'zh' 
+                                ? '分享你的 3D 模型到社交媒体，让更多人看到你的作品！' 
+                                : 'Share your 3D model on social media and show off your creation!'}
                         </p>
 
                         <div className="grid grid-cols-2 gap-3 mb-6">
                             {platforms.map(platform => {
                                 const Icon = platform.icon;
-                                const isShared = shared.includes(platform.id);
-                                const isSharing = sharing === platform.id;
-
                                 return (
                                     <button
                                         key={platform.id}
                                         onClick={() => handleShare(platform.id)}
-                                        disabled={isShared || isSharing}
-                                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${platform.color} ${isShared ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${platform.color}`}
                                     >
-                                        {isSharing ? (
-                                            <Loader2 className="w-5 h-5 animate-spin" />
-                                        ) : isShared ? (
-                                            <Check className="w-5 h-5 text-green-400" />
-                                        ) : (
-                                            <Icon />
-                                        )}
+                                        <Icon />
                                         <div className="text-left">
                                             <div className="font-medium text-sm">{platform.name}</div>
-                                            <div className="text-xs opacity-60">+{platform.credits} 积分</div>
                                         </div>
+                                        <ExternalLink className="w-4 h-4 ml-auto opacity-50" />
                                     </button>
                                 );
                             })}
                         </div>
 
                         <div className="border-t border-white/10 pt-4">
-                            <p className="text-xs text-gray-500 mb-2">或复制链接</p>
+                            <p className="text-xs text-gray-500 mb-2">
+                                {locale === 'zh' ? '或复制链接' : 'Or copy link'}
+                            </p>
                             <div className="flex gap-2">
                                 <input
                                     type="text"
@@ -181,11 +148,7 @@ export function ShareDialog({ isOpen, onClose, generationId, modelUrl, onShareCo
                                     readOnly
                                     className="flex-1 px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-sm text-gray-400 truncate"
                                 />
-                                <Button
-                                    onClick={handleCopy}
-                                    variant="outline"
-                                    className="border-white/20"
-                                >
+                                <Button onClick={handleCopy} variant="outline" className="border-white/20">
                                     {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                                 </Button>
                             </div>

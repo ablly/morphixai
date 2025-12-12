@@ -102,10 +102,16 @@ export default function SignupPage() {
 
     try {
       const supabase = createClient();
+      
+      // 如果有邀请码，存储到 localStorage 以便 callback 时使用
+      if (referralCode) {
+        localStorage.setItem('pending_referral_code', referralCode);
+      }
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/${locale}/auth/callback`,
+          redirectTo: `${window.location.origin}/${locale}/auth/callback${referralCode ? `?ref=${referralCode}` : ''}`,
         },
       });
 

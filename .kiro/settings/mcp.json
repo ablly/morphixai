@@ -10,6 +10,9 @@
       ],
       "disabled": false,
       "autoApprove": []
+    },
+    "fal": {
+      "url": "https://docs.fal.ai/mcp"
     }
   }
 }

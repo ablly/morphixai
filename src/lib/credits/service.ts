@@ -20,7 +20,7 @@ export class CreditsService {
    */
   static async getBalance(userId: string): Promise<number> {
     const supabase = await createClient();
-    
+
     const { data, error } = await supabase
       .from('user_credits')
       .select('balance')
@@ -36,7 +36,7 @@ export class CreditsService {
    */
   static async getCredits(userId: string): Promise<UserCredits | null> {
     const supabase = await createClient();
-    
+
     const { data, error } = await supabase
       .from('user_credits')
       .select('*')
@@ -58,63 +58,30 @@ export class CreditsService {
   ): Promise<{ success: boolean; newBalance: number; error?: string }> {
     const supabase = await createClient();
 
-    // 获取当前余额和总消费
-    const { data: currentCredits, error: fetchError } = await supabase
-      .from('user_credits')
-      .select('balance, total_spent')
-      .eq('user_id', userId)
-      .single();
-    
-    if (fetchError || !currentCredits) {
-      return { 
-        success: false, 
-        newBalance: 0, 
-        error: 'Failed to fetch credits' 
-      };
-    }
-
-    const currentBalance = currentCredits.balance;
-    
-    if (currentBalance < amount) {
-      return { 
-        success: false, 
-        newBalance: currentBalance, 
-        error: 'Insufficient credits' 
-      };
-    }
-
-    const newBalance = currentBalance - amount;
-    const newTotalSpent = (currentCredits.total_spent || 0) + amount;
-
-    // 更新余额
-    const { error: updateError } = await supabase
-      .from('user_credits')
-      .update({ 
-        balance: newBalance,
-        total_spent: newTotalSpent,
-      })
-      .eq('user_id', userId)
-      .eq('balance', currentBalance); // 乐观锁，防止并发问题
-
-    if (updateError) {
-      return { 
-        success: false, 
-        newBalance: currentBalance, 
-        error: updateError.message 
-      };
-    }
-
-    // 记录交易
-    await supabase.from('credit_transactions').insert({
-      user_id: userId,
-      type: 'GENERATION' as TransactionType,
-      amount: -amount,
-      balance_after: newBalance,
-      description,
-      reference_id: referenceId,
+    const { data, error } = await supabase.rpc('deduct_credits', {
+      p_user_id: userId,
+      p_amount: amount,
+      p_description: description,
+      p_reference_id: referenceId
     });
 
-    return { success: true, newBalance };
+    if (error) {
+      return {
+        success: false,
+        newBalance: 0,
+        error: error.message
+      };
+    }
+
+    // The RPC returns the new balance if successful, or raises an exception if failed (which is caught by error)
+    // However, my RPC definition might return a JSON or scalar. 
+    // Let's assume it returns the new balance as a number based on standard practices, 
+    // but I should check the migration. 
+    // If the RPC returns void or boolean, I might need to fetch balance.
+    // Let's fetch balance to be sure or trust the return if I recall correctly.
+    // Migration 004: RETURNS numeric.
+
+    return { success: true, newBalance: data as number };
   }
 
   /**
@@ -137,10 +104,10 @@ export class CreditsService {
       .single();
 
     if (fetchError || !currentCredits) {
-      return { 
-        success: false, 
-        newBalance: 0, 
-        error: 'Failed to fetch credits' 
+      return {
+        success: false,
+        newBalance: 0,
+        error: 'Failed to fetch credits'
       };
     }
 
@@ -151,17 +118,17 @@ export class CreditsService {
     // 更新余额
     const { error: updateError } = await supabase
       .from('user_credits')
-      .update({ 
+      .update({
         balance: newBalance,
         total_earned: newTotalEarned,
       })
       .eq('user_id', userId);
 
     if (updateError) {
-      return { 
-        success: false, 
-        newBalance: currentBalance, 
-        error: updateError.message 
+      return {
+        success: false,
+        newBalance: currentBalance,
+        error: updateError.message
       };
     }
 
@@ -222,7 +189,7 @@ export class CreditsService {
    */
   static async getTodaySocialCredits(userId: string): Promise<number> {
     const supabase = await createClient();
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 

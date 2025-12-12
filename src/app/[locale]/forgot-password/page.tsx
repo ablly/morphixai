@@ -24,8 +24,10 @@ export default function ForgotPasswordPage() {
 
     try {
       const supabase = createClient();
+      // Supabase 会先跳转到 auth callback，带上 type=recovery 参数
+      // 然后 callback 会重定向到 reset-password 页面
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/${locale}/reset-password`,
+        redirectTo: `${window.location.origin}/${locale}/auth/callback?type=recovery`,
       });
 
       if (error) {

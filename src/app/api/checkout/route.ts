@@ -1,54 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { StripeService, CREDIT_PACKAGES } from '@/lib/stripe/service';
-import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
-    
-    // 验证用户登录
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: '请先登录' },
         { status: 401 }
       );
     }
 
-    // Rate limiting
-    const rateLimit = checkRateLimit(user.id, 'api:checkout');
-    if (!rateLimit.allowed) {
-      return NextResponse.json({ 
-        error: 'Too many requests. Please try again later.',
-        retryAfter: Math.ceil(rateLimit.resetIn / 1000),
-      }, { status: 429 });
-    }
+    const { packageId } = await request.json();
 
-    const body = await request.json();
-    const { packageId } = body;
-
-    // 验证套餐
-    if (!packageId || !(packageId in CREDIT_PACKAGES)) {
+    // 验证套餐 ID
+    if (!packageId || !CREDIT_PACKAGES[packageId as keyof typeof CREDIT_PACKAGES]) {
       return NextResponse.json(
-        { error: 'Invalid package' },
+        { error: '无效的套餐' },
         { status: 400 }
       );
     }
 
-    const origin = request.headers.get('origin') || 'http://localhost:3000';
+    // 获取应用 URL
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     
+    // 创建 Checkout Session
     const result = await StripeService.createCheckoutSession(
       user.id,
       user.email!,
       packageId as keyof typeof CREDIT_PACKAGES,
-      `${origin}/dashboard?success=true`,
-      `${origin}/pricing?canceled=true`
+      `${appUrl}/zh/dashboard?payment=success`,
+      `${appUrl}/zh/pricing?payment=cancelled`
     );
 
     if (!result) {
       return NextResponse.json(
-        { error: 'Failed to create checkout session' },
+        { error: '创建支付会话失败' },
         { status: 500 }
       );
     }
@@ -57,10 +47,10 @@ export async function POST(request: NextRequest) {
       sessionId: result.sessionId,
       url: result.url,
     });
-  } catch (error: any) {
-    console.error('Checkout error:', error);
+  } catch (error) {
+    console.error('[Checkout] Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: '服务器错误' },
       { status: 500 }
     );
   }

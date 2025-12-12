@@ -2,6 +2,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import "../globals.css";
 import type { Metadata } from "next";
+import { Analytics } from '@vercel/analytics/next';
 import { ToastProvider } from '@/components/ui/toast';
 import { ConfirmProvider } from '@/components/ui/confirm-dialog';
 
@@ -65,6 +66,7 @@ export default async function LocaleLayout({
                         </ConfirmProvider>
                     </ToastProvider>
                 </NextIntlClientProvider>
+                <Analytics />
             </body>
         </html>
     );

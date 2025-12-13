@@ -58,6 +58,22 @@ export class AdminService {
       .select('*', { count: 'exact', head: true })
       .gte('created_at', today.toISOString());
 
+    // 生成状态统计
+    const { count: completedGenerations } = await supabase
+      .from('generations')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'COMPLETED');
+
+    const { count: failedGenerations } = await supabase
+      .from('generations')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'FAILED');
+
+    const { count: pendingGenerations } = await supabase
+      .from('generations')
+      .select('*', { count: 'exact', head: true })
+      .in('status', ['PENDING', 'PROCESSING']);
+
     // 总收入（购买类型的交易）
     const { data: purchaseData } = await supabase
       .from('credit_transactions')
@@ -88,6 +104,9 @@ export class AdminService {
       todayUsers: todayUsers || 0,
       totalGenerations: totalGenerations || 0,
       todayGenerations: todayGenerations || 0,
+      completedGenerations: completedGenerations || 0,
+      failedGenerations: failedGenerations || 0,
+      pendingGenerations: pendingGenerations || 0,
       totalRevenue,
       todayRevenue,
       totalSpent,

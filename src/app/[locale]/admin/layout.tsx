@@ -31,13 +31,36 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       return;
     }
 
-    const { data: profile } = await supabase
+    // 已知管理员邮箱列表 - 这些邮箱无论数据库状态如何都有管理员权限
+    const adminEmails = ['3533912007@qq.com'];
+    const userEmailLower = (user.email || '').toLowerCase();
+    const isKnownAdmin = adminEmails.some(e => e.toLowerCase() === userEmailLower);
+
+    // 如果是已知管理员，直接授权
+    if (isKnownAdmin) {
+      console.log('Admin access granted via email whitelist:', user.email);
+      setUserEmail(user.email || '');
+      setIsAdmin(true);
+      setLoading(false);
+      return;
+    }
+
+    // 否则检查数据库中的 role
+    const { data: profile, error } = await supabase
       .from('profiles')
       .select('role, email')
       .eq('id', user.id)
       .single();
 
-    if (profile?.role !== 'admin' && profile?.role !== 'super_admin') {
+    if (error) {
+      console.error('Error fetching profile:', error);
+      router.push(`/${locale}/dashboard`);
+      return;
+    }
+
+    const hasAdminRole = profile?.role === 'admin' || profile?.role === 'super_admin';
+    
+    if (!hasAdminRole) {
       router.push(`/${locale}/dashboard`);
       return;
     }

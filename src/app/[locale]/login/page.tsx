@@ -59,7 +59,13 @@ export default function LoginPage() {
         return;
       }
 
-      router.push(`/${locale}/dashboard`);
+      // 检查是否是管理员，如果是则跳转到管理后台
+      const adminEmails = ['3533912007@qq.com'];
+      if (adminEmails.includes(email.toLowerCase())) {
+        router.push(`/${locale}/admin`);
+      } else {
+        router.push(`/${locale}/dashboard`);
+      }
       router.refresh();
     } catch {
       setError('An unexpected error occurred');

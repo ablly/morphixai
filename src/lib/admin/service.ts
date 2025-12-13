@@ -1,14 +1,27 @@
 import { createClient } from '@/lib/supabase/server';
 
 export class AdminService {
+  // 已知管理员邮箱列表
+  static readonly ADMIN_EMAILS = ['3533912007@qq.com'];
+
   // 检查用户是否是管理员
-  static async isAdmin(userId: string): Promise<boolean> {
+  static async isAdmin(userId: string, userEmail?: string): Promise<boolean> {
+    // 先检查邮箱白名单
+    if (userEmail && this.ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail.toLowerCase())) {
+      return true;
+    }
+
     const supabase = await createClient();
     const { data } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, email')
       .eq('id', userId)
       .single();
+    
+    // 检查数据库中的邮箱是否在白名单中
+    if (data?.email && this.ADMIN_EMAILS.some(e => e.toLowerCase() === data.email.toLowerCase())) {
+      return true;
+    }
     
     return data?.role === 'admin' || data?.role === 'super_admin';
   }
@@ -22,7 +35,7 @@ export class AdminService {
       throw new Error('未登录');
     }
 
-    const isAdmin = await this.isAdmin(user.id);
+    const isAdmin = await this.isAdmin(user.id, user.email || undefined);
     if (!isAdmin) {
       throw new Error('无管理员权限');
     }

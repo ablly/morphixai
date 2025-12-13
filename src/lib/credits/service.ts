@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import type { TransactionType, CreditTransaction, UserCredits } from '@/lib/supabase/types';
 
 // Re-export constants from the shared constants file (safe for client components)
@@ -49,6 +49,7 @@ export class CreditsService {
 
   /**
    * 扣除积分 (带事务保护)
+   * 重要: 使用 Admin 客户端确保 RPC 调用成功
    */
   static async deductCredits(
     userId: string,
@@ -56,7 +57,8 @@ export class CreditsService {
     description: string,
     referenceId?: string
   ): Promise<{ success: boolean; newBalance: number; error?: string }> {
-    const supabase = await createClient();
+    // 使用 Admin 客户端绕过 RLS
+    const supabase = await createAdminClient();
 
     const { data, error } = await supabase.rpc('deduct_credits', {
       p_user_id: userId,
@@ -86,6 +88,7 @@ export class CreditsService {
 
   /**
    * 添加积分
+   * 重要: 使用 Admin 客户端确保数据写入成功
    */
   static async addCredits(
     userId: string,
@@ -94,7 +97,8 @@ export class CreditsService {
     description: string,
     referenceId?: string
   ): Promise<{ success: boolean; newBalance: number; error?: string }> {
-    const supabase = await createClient();
+    // 使用 Admin 客户端绕过 RLS
+    const supabase = await createAdminClient();
 
     // 获取当前余额和总获得
     const { data: currentCredits, error: fetchError } = await supabase

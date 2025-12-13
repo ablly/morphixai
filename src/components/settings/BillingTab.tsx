@@ -41,18 +41,78 @@ export function BillingTab() {
         fetchData();
     }, [page]);
 
+    // 实时订阅积分和交易变化
+    useEffect(() => {
+        const supabase = createClient();
+        
+        const setupRealtimeSubscription = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            // 订阅 user_credits 变化
+            const creditsChannel = supabase
+                .channel('user-credits-changes')
+                .on('postgres_changes', 
+                    { event: '*', schema: 'public', table: 'user_credits', filter: `user_id=eq.${user.id}` },
+                    (payload) => {
+                        if (payload.new) {
+                            const newCredits = payload.new as { balance: number; total_earned: number; total_spent: number };
+                            setCredits({
+                                balance: newCredits.balance,
+                                total_earned: newCredits.total_earned,
+                                total_spent: newCredits.total_spent,
+                            });
+                        }
+                    }
+                )
+                .subscribe();
+
+            // 订阅 credit_transactions 变化
+            const transactionsChannel = supabase
+                .channel('credit-transactions-changes')
+                .on('postgres_changes',
+                    { event: 'INSERT', schema: 'public', table: 'credit_transactions', filter: `user_id=eq.${user.id}` },
+                    () => {
+                        // 有新交易时重新获取数据
+                        fetchData();
+                    }
+                )
+                .subscribe();
+
+            return () => {
+                supabase.removeChannel(creditsChannel);
+                supabase.removeChannel(transactionsChannel);
+            };
+        };
+
+        const cleanup = setupRealtimeSubscription();
+        return () => {
+            cleanup.then(fn => fn?.());
+        };
+    }, []);
+
     const fetchData = async () => {
         setLoading(true);
         const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        console.log('[BillingTab] Auth check:', { user: user?.id, error: authError?.message });
+        
+        if (!user) {
+            console.log('[BillingTab] No user found, stopping fetch');
+            setLoading(false);
+            return;
+        }
 
         // 获取用户积分信息
-        const { data: creditsData } = await supabase
+        const { data: creditsData, error: creditsError } = await supabase
             .from('user_credits')
             .select('balance, total_earned, total_spent')
             .eq('user_id', user.id)
             .single();
+        
+        console.log('[BillingTab] Credits fetch:', { data: creditsData, error: creditsError?.message });
+        
         if (creditsData) setCredits(creditsData);
 
         // 获取用户套餐

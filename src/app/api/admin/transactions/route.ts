@@ -10,8 +10,11 @@ export async function GET(request: NextRequest) {
 
     const result = await AdminService.getTransactions(page, limit, type);
     return NextResponse.json(result);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : '获取交易记录失败';
-    return NextResponse.json({ error: message }, { status: 403 });
+  } catch (error: any) {
+    console.error('Admin transactions error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch transactions' },
+      { status: error.message === '未登录' ? 401 : error.message === '无管理员权限' ? 403 : 500 }
+    );
   }
 }

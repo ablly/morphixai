@@ -7,17 +7,14 @@ const intlMiddleware = createIntlMiddleware({
   defaultLocale: 'en'
 });
 
-// 需要登录的路径
-const protectedPaths = ['/dashboard', '/create', '/settings'];
+// 需要登录的路径 - 暂时禁用 middleware 级别的保护，让页面自己处理
+// const protectedPaths = ['/dashboard', '/create', '/settings'];
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
+  // 先处理国际化
+  const intlResponse = intlMiddleware(request);
 
-  // 创建 Supabase 客户端
+  // 创建 Supabase 客户端，直接在 intlResponse 上设置 cookies
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -27,49 +24,18 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
+          cookiesToSet.forEach(({ name, value, options }) => {
+            // 直接在 intlResponse 上设置 cookies
+            intlResponse.cookies.set(name, value, options);
           });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
         },
       },
     }
   );
 
-  // 刷新会话
-  const { data: { user } } = await supabase.auth.getUser();
-
-  // 检查受保护路径
-  const pathname = request.nextUrl.pathname;
-  const isProtectedPath = protectedPaths.some(path =>
-    pathname.includes(path)
-  );
-
-  // 获取当前语言
-  const locale = pathname.split('/')[1];
-  const validLocale = ['en', 'zh'].includes(locale) ? locale : 'en';
-
-  if (isProtectedPath && !user) {
-    // 未登录用户访问受保护页面，重定向到登录页
-    const loginUrl = new URL(`/${validLocale}/login`, request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  // 处理国际化
-  const intlResponse = intlMiddleware(request);
-
-  // 合并 cookies
-  response.cookies.getAll().forEach(cookie => {
-    intlResponse.cookies.set(cookie.name, cookie.value);
-  });
+  // 刷新会话 - 这会更新 cookie
+  // 重要：这确保 session 保持有效
+  await supabase.auth.getUser();
 
   return intlResponse;
 }

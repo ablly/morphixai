@@ -1,71 +1,68 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { isTripoConfigured } from '@/lib/tripo3d/service';
+import { createAdminClient } from '@/lib/supabase/server';
 
 /**
- * 健康检查端点
- * 
- * 用于:
- * - 负载均衡器健康检查
- * - 监控系统 (Datadog, New Relic, etc.)
- * - CI/CD 部署验证
+ * 健康检查 API
+ * 用于验证服务和数据库连接状态
  */
 export async function GET() {
-  const startTime = Date.now();
-  const checks: Record<string, { status: 'ok' | 'error'; latency?: number; message?: string }> = {};
-
-  // 检查 Supabase 连接
+  const checks: Record<string, { status: 'ok' | 'error'; message?: string; latency?: number }> = {};
+  
+  // 1. 检查 Supabase 连接
   try {
-    const supabase = await createClient();
-    const dbStart = Date.now();
-    const { error } = await supabase.from('credit_packages').select('id').limit(1);
-    checks.database = {
-      status: error ? 'error' : 'ok',
-      latency: Date.now() - dbStart,
-      message: error?.message,
-    };
-  } catch (e: any) {
-    checks.database = { status: 'error', message: e.message };
+    const start = Date.now();
+    const supabase = await createAdminClient();
+    const { error } = await supabase.from('profiles').select('id').limit(1);
+    const latency = Date.now() - start;
+    
+    if (error) {
+      checks.database = { status: 'error', message: error.message };
+    } else {
+      checks.database = { status: 'ok', latency };
+    }
+  } catch (error: any) {
+    checks.database = { status: 'error', message: error.message };
   }
 
-  // 检查 Tripo3D API 配置
-  checks.tripo3d = {
-    status: isTripoConfigured() ? 'ok' : 'error',
-    message: isTripoConfigured() ? undefined : 'API key not configured',
-  };
-
-  // 检查 Stripe 配置
-  checks.stripe = {
-    status: process.env.STRIPE_SECRET_KEY ? 'ok' : 'error',
-    message: process.env.STRIPE_SECRET_KEY ? undefined : 'Not configured',
-  };
-
-  // 检查环境变量
+  // 2. 检查环境变量
   const requiredEnvVars = [
     'NEXT_PUBLIC_SUPABASE_URL',
     'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-    'NEXT_PUBLIC_APP_URL',
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_WEBHOOK_SECRET',
+    'FAL_KEY',
   ];
-  const missingEnvVars = requiredEnvVars.filter(v => !process.env[v]);
-  checks.environment = {
-    status: missingEnvVars.length === 0 ? 'ok' : 'error',
-    message: missingEnvVars.length > 0 ? `Missing: ${missingEnvVars.join(', ')}` : undefined,
-  };
 
-  // 总体状态
+  const missingEnvVars = requiredEnvVars.filter(key => !process.env[key]);
+  
+  if (missingEnvVars.length > 0) {
+    checks.environment = { 
+      status: 'error', 
+      message: `Missing: ${missingEnvVars.join(', ')}` 
+    };
+  } else {
+    checks.environment = { status: 'ok' };
+  }
+
+  // 3. 检查 Realtime 配置
+  try {
+    const supabase = await createAdminClient();
+    // 简单测试 - 尝试创建一个 channel
+    const channel = supabase.channel('health-check');
+    await channel.subscribe();
+    await supabase.removeChannel(channel);
+    checks.realtime = { status: 'ok' };
+  } catch (error: any) {
+    checks.realtime = { status: 'error', message: error.message };
+  }
+
+  // 计算总体状态
   const allOk = Object.values(checks).every(c => c.status === 'ok');
-  const totalLatency = Date.now() - startTime;
-
+  
   return NextResponse.json({
     status: allOk ? 'healthy' : 'degraded',
     timestamp: new Date().toISOString(),
-    latency: totalLatency,
-    version: process.env.npm_package_version || '1.0.0',
     checks,
-  }, {
-    status: allOk ? 200 : 503,
-    headers: {
-      'Cache-Control': 'no-store',
-    },
-  });
+  }, { status: allOk ? 200 : 503 });
 }

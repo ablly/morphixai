@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { CreditsService } from '@/lib/credits/service';
 
 // Fal.ai webhook secret (optional but recommended for production)
@@ -85,7 +85,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Missing request_id' }, { status: 400 });
         }
 
-        const supabase = await createClient();
+        // 重要: 使用 Admin 客户端绕过 RLS，确保 webhook 能正确更新数据
+        const supabase = await createAdminClient();
 
         // Find the generation record
         const { data: generation, error: fetchError } = await supabase

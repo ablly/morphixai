@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { CreditsService } from '@/lib/credits/service';
 
 // 社交平台奖励配置
@@ -73,6 +73,7 @@ export class SocialShareService {
 
   /**
    * 记录社交分享并发放奖励
+   * 重要: 使用 Admin 客户端确保数据写入成功
    */
   static async recordShare(
     userId: string,
@@ -80,7 +81,8 @@ export class SocialShareService {
     generationId?: string,
     shareUrl?: string
   ): Promise<ShareResult> {
-    const supabase = await createClient();
+    // 使用 Admin 客户端绕过 RLS
+    const supabase = await createAdminClient();
 
     // 检查今日限额
     const todayCredits = await this.getTodaySocialCredits(userId);

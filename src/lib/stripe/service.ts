@@ -1,5 +1,5 @@
 import { stripe } from './server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import type Stripe from 'stripe';
 
 // 积分套餐配置 (Fal.ai SAM 3D 策略: 高利润率)
@@ -23,7 +23,7 @@ export class StripeService {
    * 检查用户是否为首次购买
    */
   static async isFirstPurchase(userId: string): Promise<boolean> {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     
     const { data } = await supabase
       .from('profiles')
@@ -38,7 +38,7 @@ export class StripeService {
    * 标记首次购买已使用
    */
   static async markFirstPurchaseUsed(userId: string): Promise<void> {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     
     await supabase
       .from('profiles')
@@ -163,6 +163,7 @@ export class StripeService {
 
   /**
    * 处理 Webhook: checkout.session.completed
+   * 重要: 使用 Admin 客户端绕过 RLS，确保数据正确写入
    */
   static async handleCheckoutCompleted(
     session: Stripe.Checkout.Session
@@ -170,24 +171,70 @@ export class StripeService {
     const { userId, packageId, credits, isFirstPurchase } = session.metadata || {};
     
     if (!userId || !credits) {
-      console.error('Missing metadata in checkout session');
+      console.error('[Stripe] Missing metadata in checkout session:', session.id);
       return;
     }
 
-    const supabase = await createClient();
+    console.log('[Stripe] Processing checkout for user:', userId, 'credits:', credits, 'sessionId:', session.id);
+    
+    // 重要: 使用 Admin 客户端绕过 RLS
+    const supabase = await createAdminClient();
     const creditAmount = parseInt(credits, 10);
 
-    // 添加积分
-    const { data: currentCredits } = await supabase
+    // 检查是否已经处理过这个 session (防止重复处理)
+    const { data: existingTransaction } = await supabase
+      .from('credit_transactions')
+      .select('id')
+      .eq('reference_id', session.id)
+      .single();
+
+    if (existingTransaction) {
+      console.log('[Stripe] Session already processed, skipping:', session.id);
+      return;
+    }
+
+    // 获取当前积分
+    const { data: currentCredits, error: fetchError } = await supabase
       .from('user_credits')
       .select('balance, total_earned')
       .eq('user_id', userId)
       .single();
 
+    if (fetchError) {
+      console.error('[Stripe] Failed to fetch user credits:', fetchError);
+      // 如果用户没有积分记录，创建一个
+      if (fetchError.code === 'PGRST116') {
+        console.log('[Stripe] Creating new credit record for user:', userId);
+        const { error: insertError } = await supabase.from('user_credits').insert({
+          user_id: userId,
+          balance: creditAmount,
+          total_earned: creditAmount,
+          total_spent: 0,
+        });
+        if (insertError) {
+          console.error('[Stripe] Failed to create credit record:', insertError);
+          throw new Error(`Failed to create credit record: ${insertError.message}`);
+        }
+        // 记录交易
+        await supabase.from('credit_transactions').insert({
+          user_id: userId,
+          type: 'PURCHASE',
+          amount: creditAmount,
+          balance_after: creditAmount,
+          description: `Purchased ${packageId} package (${creditAmount} credits)`,
+          reference_id: session.id,
+        });
+        console.log('[Stripe] Successfully created credit record and transaction for new user');
+        return;
+      }
+      throw new Error(`Failed to fetch credits: ${fetchError.message}`);
+    }
+
     const newBalance = (currentCredits?.balance ?? 0) + creditAmount;
     const newTotalEarned = (currentCredits?.total_earned ?? 0) + creditAmount;
 
-    await supabase
+    // 更新积分
+    const { error: updateError } = await supabase
       .from('user_credits')
       .update({ 
         balance: newBalance,
@@ -195,8 +242,13 @@ export class StripeService {
       })
       .eq('user_id', userId);
 
+    if (updateError) {
+      console.error('[Stripe] Failed to update credits:', updateError);
+      throw new Error(`Failed to update credits: ${updateError.message}`);
+    }
+
     // 记录交易
-    await supabase.from('credit_transactions').insert({
+    const { error: transactionError } = await supabase.from('credit_transactions').insert({
       user_id: userId,
       type: 'PURCHASE',
       amount: creditAmount,
@@ -204,6 +256,13 @@ export class StripeService {
       description: `Purchased ${packageId} package (${creditAmount} credits)`,
       reference_id: session.id,
     });
+
+    if (transactionError) {
+      console.error('[Stripe] Failed to record transaction:', transactionError);
+      // 不抛出错误，因为积分已经添加成功
+    }
+
+    console.log('[Stripe] Successfully added', creditAmount, 'credits to user', userId, 'new balance:', newBalance);
 
     // 更新用户 plan_tier (根据购买的套餐)
     const planTierMap: Record<string, string> = {
@@ -242,12 +301,16 @@ export class StripeService {
 
   /**
    * 处理 Webhook: invoice.paid (订阅续费)
+   * 重要: 使用 Admin 客户端绕过 RLS
    */
   static async handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
     const subscription = (invoice as any).subscription as string;
     if (!subscription) return;
 
-    const supabase = await createClient();
+    console.log('[Stripe] Processing invoice paid for subscription:', subscription);
+    
+    // 重要: 使用 Admin 客户端绕过 RLS
+    const supabase = await createAdminClient();
 
     // 查找订阅记录
     const { data: sub } = await supabase
@@ -307,7 +370,7 @@ export class StripeService {
         cancel_at_period_end: true,
       });
 
-      const supabase = await createClient();
+      const supabase = await createAdminClient();
       await supabase
         .from('subscriptions')
         .update({ cancel_at_period_end: true })
@@ -323,7 +386,7 @@ export class StripeService {
    * 获取用户订阅状态
    */
   static async getUserSubscription(userId: string) {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
 
     const { data } = await supabase
       .from('subscriptions')

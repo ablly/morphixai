@@ -10,13 +10,19 @@ export async function POST(
     const { amount, reason } = await request.json();
 
     if (typeof amount !== 'number' || !reason) {
-      return NextResponse.json({ error: '参数错误' }, { status: 400 });
+      return NextResponse.json(
+        { error: '请提供有效的积分数量和原因' },
+        { status: 400 }
+      );
     }
 
     const result = await AdminService.updateUserCredits(id, amount, reason);
     return NextResponse.json(result);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : '更新积分失败';
-    return NextResponse.json({ error: message }, { status: 403 });
+  } catch (error: any) {
+    console.error('Admin update credits error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to update credits' },
+      { status: error.message === '未登录' ? 401 : error.message === '无管理员权限' ? 403 : 500 }
+    );
   }
 }

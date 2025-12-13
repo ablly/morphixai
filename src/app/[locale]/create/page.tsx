@@ -128,16 +128,72 @@ export default function CreatePage() {
 
     const creditsRequired = calculateCost();
 
-    // Fetch credits
+    // Fetch credits and check auth
     useEffect(() => {
         const fetchCredits = async () => {
             const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) { router.push(`/${locale}/login`); return; }
-            const { data } = await supabase.from('user_credits').select('balance').eq('user_id', user.id).single();
+            
+            // 使用 getUser() 获取当前用户 (更可靠)
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            
+            if (authError || !user) {
+                console.log('[Create] No authenticated user, redirecting to login');
+                router.push(`/${locale}/login?redirect=/${locale}/create`);
+                return;
+            }
+            
+            console.log('[Create] Fetching credits for user:', user.id);
+            
+            const { data, error } = await supabase
+                .from('user_credits')
+                .select('balance')
+                .eq('user_id', user.id)
+                .single();
+            
+            if (error) {
+                console.error('[Create] Error fetching credits:', error);
+                // 如果是 RLS 错误或记录不存在，设置为 0
+                setCredits(0);
+                return;
+            }
+            
+            console.log('[Create] Credits loaded:', data?.balance);
             if (data) setCredits(data.balance);
         };
         fetchCredits();
+
+        // 订阅积分变化 - 只监听当前用户
+        const supabase = createClient();
+        const setupCreditsSubscription = async () => {
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+            if (!currentUser) return null;
+            
+            return supabase
+                .channel(`create-credits-${currentUser.id}`)
+                .on('postgres_changes', { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'user_credits',
+                    filter: `user_id=eq.${currentUser.id}` // 只监听当前用户
+                }, (payload) => {
+                    console.log('[Create] Credits update:', payload.new);
+                    if (payload.new && 'balance' in payload.new) {
+                        setCredits((payload.new as { balance: number }).balance);
+                    }
+                })
+                .subscribe((status) => {
+                    console.log('[Create] Credits subscription status:', status);
+                });
+        };
+        
+        let creditsChannel: any = null;
+        setupCreditsSubscription().then(channel => {
+            creditsChannel = channel;
+        });
+
+        return () => {
+            if (creditsChannel) supabase.removeChannel(creditsChannel);
+        };
     }, [router, locale]);
 
     // Poll generation status

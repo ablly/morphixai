@@ -88,10 +88,14 @@ export default function DashboardPage() {
     const fetchData = async () => {
       const supabase = createClient();
 
-      // 检查用户登录状态
+      // 使用 getUser() 获取当前用户 (更可靠)
       const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      console.log('[Dashboard] Auth check:', { userId: user?.id, error: authError?.message });
+      
       if (authError || !user) {
-        router.push(`/${locale}/login`);
+        console.log('[Dashboard] No authenticated user, redirecting to login');
+        router.push(`/${locale}/login?redirect=/${locale}/dashboard`);
         return;
       }
 
@@ -156,22 +160,68 @@ export default function DashboardPage() {
 
     fetchData();
 
-    // 实时订阅生成状态更新
-    const supabase = createClient();
-    const channel = supabase
-      .channel('generations-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'generations' }, (payload) => {
-        if (payload.eventType === 'UPDATE') {
-          setGenerations(prev => prev.map(g => g.id === payload.new.id ? payload.new as Generation : g));
-        } else if (payload.eventType === 'INSERT') {
-          setGenerations(prev => [payload.new as Generation, ...prev]);
-        } else if (payload.eventType === 'DELETE') {
-          setGenerations(prev => prev.filter(g => g.id !== payload.old.id));
-        }
-      })
-      .subscribe();
+    // 实时订阅生成状态更新和积分变化
+    const setupRealtimeSubscriptions = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return { generationsChannel: null, creditsChannel: null, supabase: null };
+      
+      // 订阅 generations 变化 - 只监听当前用户的数据
+      const generationsChannel = supabase
+        .channel(`generations-${user.id}`)
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'generations',
+          filter: `user_id=eq.${user.id}` // 重要: 只监听当前用户的数据
+        }, (payload) => {
+          console.log('[Realtime] Generation update:', payload.eventType, payload.new);
+          if (payload.eventType === 'UPDATE') {
+            setGenerations(prev => prev.map(g => g.id === payload.new.id ? payload.new as Generation : g));
+          } else if (payload.eventType === 'INSERT') {
+            setGenerations(prev => [payload.new as Generation, ...prev]);
+          } else if (payload.eventType === 'DELETE') {
+            setGenerations(prev => prev.filter(g => g.id !== payload.old.id));
+          }
+        })
+        .subscribe((status) => {
+          console.log('[Realtime] Generations subscription status:', status);
+        });
 
-    return () => { supabase.removeChannel(channel); };
+      // 订阅 user_credits 变化 - 只监听当前用户的积分
+      const creditsChannel = supabase
+        .channel(`credits-${user.id}`)
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'user_credits',
+          filter: `user_id=eq.${user.id}` // 重要: 只监听当前用户的积分
+        }, (payload) => {
+          console.log('[Realtime] Credits update:', payload.new);
+          if (payload.new && 'balance' in payload.new) {
+            setCredits((payload.new as { balance: number }).balance);
+          }
+        })
+        .subscribe((status) => {
+          console.log('[Realtime] Credits subscription status:', status);
+        });
+
+      return { generationsChannel, creditsChannel, supabase };
+    };
+
+    let cleanup: { generationsChannel: any; creditsChannel: any; supabase: any } | null = null;
+    
+    setupRealtimeSubscriptions().then(result => {
+      if (result) cleanup = result;
+    });
+
+    return () => { 
+      if (cleanup?.supabase) {
+        if (cleanup.generationsChannel) cleanup.supabase.removeChannel(cleanup.generationsChannel);
+        if (cleanup.creditsChannel) cleanup.supabase.removeChannel(cleanup.creditsChannel);
+      }
+    };
   }, [router, locale]);
 
   const handleDelete = async (generationId: string) => {

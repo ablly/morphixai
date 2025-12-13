@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe/server';
 import { StripeService } from '@/lib/stripe/service';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import type Stripe from 'stripe';
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
@@ -162,7 +162,8 @@ export async function POST(request: NextRequest) {
 // ═══════════════════════════════════════════════════════════════
 
 async function handleSubscriptionCreated(session: Stripe.Checkout.Session) {
-  const supabase = await createClient();
+  // 重要: 使用 Admin 客户端绕过 RLS
+  const supabase = await createAdminClient();
   const { userId, packageId } = session.metadata || {};
   
   if (!userId || !session.subscription) return;
@@ -197,7 +198,8 @@ async function handleSubscriptionCreated(session: Stripe.Checkout.Session) {
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  const supabase = await createClient();
+  // 重要: 使用 Admin 客户端绕过 RLS
+  const supabase = await createAdminClient();
   
   // 获取订阅周期
   const periodStart = subscription.items.data[0]?.current_period_start || subscription.created;
@@ -215,7 +217,8 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  const supabase = await createClient();
+  // 重要: 使用 Admin 客户端绕过 RLS
+  const supabase = await createAdminClient();
   
   await supabase
     .from('subscriptions')
@@ -224,7 +227,8 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 }
 
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
-  const supabase = await createClient();
+  // 重要: 使用 Admin 客户端绕过 RLS
+  const supabase = await createAdminClient();
   
   // 从 invoice 对象中获取 subscription (使用 any 绕过类型检查)
   const invoiceData = invoice as any;

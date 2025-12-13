@@ -35,6 +35,58 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, []);
 
+  // 实时订阅数据变化
+  useEffect(() => {
+    const setupRealtime = async () => {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+
+      // 订阅 profiles 变化 (新用户注册)
+      const profilesChannel = supabase
+        .channel('admin-profiles')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+          fetchAllData();
+        })
+        .subscribe();
+
+      // 订阅 credit_transactions 变化 (新交易)
+      const transactionsChannel = supabase
+        .channel('admin-transactions')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'credit_transactions' }, () => {
+          fetchAllData();
+        })
+        .subscribe();
+
+      // 订阅 generations 变化 (新生成)
+      const generationsChannel = supabase
+        .channel('admin-generations')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'generations' }, () => {
+          fetchAllData();
+        })
+        .subscribe();
+
+      // 订阅 user_credits 变化 (积分变化)
+      const creditsChannel = supabase
+        .channel('admin-credits')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'user_credits' }, () => {
+          fetchAllData();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(profilesChannel);
+        supabase.removeChannel(transactionsChannel);
+        supabase.removeChannel(generationsChannel);
+        supabase.removeChannel(creditsChannel);
+      };
+    };
+
+    const cleanup = setupRealtime();
+    return () => {
+      cleanup.then(fn => fn?.());
+    };
+  }, []);
+
   const fetchAllData = async () => {
     try {
       const [statsRes, usersRes, txRes] = await Promise.all([

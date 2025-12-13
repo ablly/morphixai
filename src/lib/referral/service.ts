@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { CreditsService } from '@/lib/credits/service';
 import { EmailService } from '@/lib/email/service';
 
@@ -54,12 +54,14 @@ export class ReferralService {
 
   /**
    * 处理邀请奖励 (新用户注册时调用)
+   * 重要: 使用 Admin 客户端确保数据写入成功
    */
   static async processReferral(
     referrerId: string,
     referredId: string
   ): Promise<{ success: boolean; error?: string }> {
-    const supabase = await createClient();
+    // 使用 Admin 客户端绕过 RLS
+    const supabase = await createAdminClient();
 
     // 检查是否已经处理过
     const { data: existing } = await supabase

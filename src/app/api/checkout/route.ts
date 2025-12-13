@@ -24,9 +24,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 获取应用 URL - 生产环境使用正式域名
+    // 获取应用 URL - 生产环境使用正式域名（不带 www，与 Supabase 配置一致）
     const appUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://www.morphix-ai.com'
+      ? 'https://morphix-ai.com'
       : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
     
     // 创建 Checkout Session

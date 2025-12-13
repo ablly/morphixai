@@ -25,8 +25,8 @@ const Viewer3D = dynamic(() => import('@/components/canvas/Viewer3D').then(mod =
 
 type GenerationMode = 'OBJECT' | 'BODY';
 
-// 工作站状态持久化 key
-const WORKSTATION_STATE_KEY = 'morphix_workstation_state';
+// 工作站状态持久化 key - 需要与用户 ID 关联
+const getWorkstationStateKey = (userId: string) => `morphix_workstation_state_${userId}`;
 
 interface WorkstationState {
     mode: GenerationMode;
@@ -36,6 +36,7 @@ interface WorkstationState {
     modelUrl: string | null;
     completedGenerationId: string | null;
     filePreviewUrl: string | null;
+    userId: string; // 添加用户 ID 验证
 }
 
 export default function CreatePage() {
@@ -74,37 +75,61 @@ export default function CreatePage() {
     
     // 是否已从 localStorage 恢复状态
     const hasRestoredState = useRef(false);
+    const currentUserId = useRef<string | null>(null);
 
-    // 从 localStorage 恢复工作站状态
+    // 从 localStorage 恢复工作站状态 - 需要先获取用户 ID
     useEffect(() => {
         if (hasRestoredState.current) return;
-        hasRestoredState.current = true;
         
-        try {
-            const savedState = localStorage.getItem(WORKSTATION_STATE_KEY);
-            if (savedState) {
-                const state: WorkstationState = JSON.parse(savedState);
-                setMode(state.mode || 'OBJECT');
-                setIsPrivate(state.isPrivate || false);
-                setIsPriority(state.isPriority || false);
-                setGenerationId(state.generationId);
-                setModelUrl(state.modelUrl);
-                setCompletedGenerationId(state.completedGenerationId);
-                setFilePreviewUrl(state.filePreviewUrl);
+        const restoreState = async () => {
+            try {
+                // 先获取当前用户 ID
+                const response = await fetch('/api/user/credits');
+                const data = await response.json();
                 
-                // 如果有正在进行的生成，恢复生成状态
-                if (state.generationId && !state.modelUrl) {
-                    setIsGenerating(true);
+                if (response.status === 401 || !data.userId) {
+                    // 未登录，清除所有旧状态
+                    localStorage.removeItem('morphix_workstation_state'); // 清除旧的全局状态
+                    hasRestoredState.current = true;
+                    return;
                 }
+                
+                currentUserId.current = data.userId;
+                const stateKey = getWorkstationStateKey(data.userId);
+                const savedState = localStorage.getItem(stateKey);
+                
+                // 清除旧的全局状态（如果存在）
+                localStorage.removeItem('morphix_workstation_state');
+                
+                if (savedState) {
+                    const state: WorkstationState = JSON.parse(savedState);
+                    // 验证状态属于当前用户
+                    if (state.userId === data.userId) {
+                        setMode(state.mode || 'OBJECT');
+                        setIsPrivate(state.isPrivate || false);
+                        setIsPriority(state.isPriority || false);
+                        setGenerationId(state.generationId);
+                        setModelUrl(state.modelUrl);
+                        setCompletedGenerationId(state.completedGenerationId);
+                        setFilePreviewUrl(state.filePreviewUrl);
+                        
+                        if (state.generationId && !state.modelUrl) {
+                            setIsGenerating(true);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to restore workstation state:', e);
             }
-        } catch (e) {
-            console.error('Failed to restore workstation state:', e);
-        }
+            hasRestoredState.current = true;
+        };
+        
+        restoreState();
     }, []);
 
-    // 保存工作站状态到 localStorage
+    // 保存工作站状态到 localStorage - 与用户 ID 关联
     useEffect(() => {
-        if (!hasRestoredState.current) return;
+        if (!hasRestoredState.current || !currentUserId.current) return;
         
         const state: WorkstationState = {
             mode,
@@ -114,8 +139,10 @@ export default function CreatePage() {
             modelUrl,
             completedGenerationId,
             filePreviewUrl,
+            userId: currentUserId.current,
         };
-        localStorage.setItem(WORKSTATION_STATE_KEY, JSON.stringify(state));
+        const stateKey = getWorkstationStateKey(currentUserId.current);
+        localStorage.setItem(stateKey, JSON.stringify(state));
     }, [mode, isPrivate, isPriority, generationId, modelUrl, completedGenerationId, filePreviewUrl]);
 
     // Calculate cost

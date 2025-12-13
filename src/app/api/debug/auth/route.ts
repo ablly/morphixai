@@ -1,23 +1,37 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
 
 /**
  * 调试 API - 检查当前用户的认证状态和数据
  * 仅用于开发调试，生产环境应禁用
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // 检查 cookies
+    const cookieStore = await cookies();
+    const allCookies = cookieStore.getAll();
+    const supabaseCookies = allCookies.filter(c => c.name.includes('supabase') || c.name.includes('sb-'));
+    
     const supabase = await createClient();
     const adminSupabase = await createAdminClient();
     
     // 1. 检查认证状态
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    if (authError) {
+    // 也检查 session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (authError && !user) {
       return NextResponse.json({
         authenticated: false,
         error: authError.message,
+        sessionError: sessionError?.message,
         hint: 'User is not authenticated or session expired',
+        cookies: {
+          total: allCookies.length,
+          supabaseRelated: supabaseCookies.map(c => ({ name: c.name, hasValue: !!c.value })),
+        },
       });
     }
     
@@ -26,6 +40,10 @@ export async function GET() {
         authenticated: false,
         error: 'No user found',
         hint: 'User needs to login',
+        cookies: {
+          total: allCookies.length,
+          supabaseRelated: supabaseCookies.map(c => ({ name: c.name, hasValue: !!c.value })),
+        },
       });
     }
     
@@ -56,12 +74,27 @@ export async function GET() {
       .eq('user_id', user.id)
       .single();
     
+    const { data: adminTransactionsData } = await adminSupabase
+      .from('credit_transactions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    
     return NextResponse.json({
       authenticated: true,
       user: {
         id: user.id,
         email: user.email,
         created_at: user.created_at,
+      },
+      session: {
+        hasSession: !!session,
+        expiresAt: session?.expires_at,
+      },
+      cookies: {
+        total: allCookies.length,
+        supabaseRelated: supabaseCookies.map(c => ({ name: c.name, hasValue: !!c.value })),
       },
       profile: {
         data: profileData,
@@ -72,12 +105,14 @@ export async function GET() {
         data: creditsData,
         error: creditsError?.message,
         rlsBlocked: !creditsData && !!creditsError,
-        adminData: adminCreditsData, // 绕过 RLS 的数据
+        adminData: adminCreditsData,
       },
       transactions: {
         data: transactionsData,
         error: transactionsError?.message,
         count: transactionsData?.length || 0,
+        adminData: adminTransactionsData,
+        adminCount: adminTransactionsData?.length || 0,
       },
       diagnosis: {
         hasProfile: !!profileData,
@@ -85,12 +120,13 @@ export async function GET() {
         creditsBalance: creditsData?.balance ?? adminCreditsData?.balance ?? 'N/A',
         rlsWorking: !!creditsData,
         dataExists: !!adminCreditsData,
+        transactionsExist: (adminTransactionsData?.length || 0) > 0,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json({
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
     }, { status: 500 });
   }
 }

@@ -7,14 +7,6 @@
       "maxDuration": 60
     }
   },
-  "redirects": [
-    {
-      "source": "/:path*",
-      "has": [{ "type": "host", "value": "www.morphix-ai.com" }],
-      "destination": "https://morphix-ai.com/:path*",
-      "permanent": true
-    }
-  ],
   "headers": [
     {
       "source": "/api/(.*)",

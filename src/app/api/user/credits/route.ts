@@ -1,17 +1,34 @@
-import { NextResponse } from 'next/server';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 /**
  * 获取当前用户的积分余额
- * 使用服务端认证，确保数据正确获取
+ * 生产环境关键 API - 必须确保用户能看到自己的积分
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    // 直接从 request 读取 cookies
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll() {
+            // API 路由不需要设置 cookies
+          },
+        },
+      }
+    );
+    
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    console.log('[API Credits] Auth check:', { 
+    console.log('[API Credits] Auth:', { 
       userId: user?.id, 
+      email: user?.email,
       error: authError?.message 
     });
     
@@ -22,8 +39,17 @@ export async function GET() {
       );
     }
 
-    // 使用 Admin 客户端获取数据（绕过 RLS）
-    const adminSupabase = await createAdminClient();
+    // 使用 Admin 客户端获取数据
+    const adminSupabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
     
     const { data, error } = await adminSupabase
       .from('user_credits')
@@ -31,14 +57,16 @@ export async function GET() {
       .eq('user_id', user.id)
       .single();
 
-    console.log('[API Credits] Data fetch:', { 
-      data, 
-      error: error?.message 
-    });
+    console.log('[API Credits] Data:', { data, error: error?.message });
 
     if (error) {
-      console.error('[API] Credits fetch error:', error);
-      return NextResponse.json({ balance: 0, total_earned: 0, total_spent: 0, userId: user.id });
+      console.error('[API Credits] Fetch error:', error);
+      return NextResponse.json({ 
+        balance: 0, 
+        total_earned: 0, 
+        total_spent: 0, 
+        userId: user.id 
+      });
     }
 
     return NextResponse.json({
@@ -48,7 +76,7 @@ export async function GET() {
       userId: user.id,
     });
   } catch (error: unknown) {
-    console.error('[API] Credits error:', error);
+    console.error('[API Credits] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error', balance: 0 },
       { status: 500 }

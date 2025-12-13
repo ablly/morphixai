@@ -1,19 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createServerClient } from '@supabase/ssr';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 /**
  * 获取用户账单数据 - 积分和交易记录
- * 使用服务端认证，确保数据正确获取
+ * 生产环境关键 API - 必须确保用户能看到自己的数据
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    // 直接从 request 读取 cookies，不依赖 next/headers
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll() {
+            // API 路由不需要设置 cookies
+          },
+        },
+      }
+    );
+    
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    console.log('[API Billing] Auth check:', { 
+    console.log('[API Billing] Auth:', { 
       userId: user?.id, 
-      error: authError?.message,
-      hasUser: !!user 
+      email: user?.email,
+      error: authError?.message 
     });
     
     if (authError || !user) {
@@ -29,26 +45,32 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const offset = (page - 1) * limit;
 
-    // 使用 Admin 客户端获取数据（绕过 RLS，确保数据可访问）
-    const adminSupabase = await createAdminClient();
+    // 使用 Admin 客户端获取数据（绕过 RLS，用户身份已验证）
+    const adminSupabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
 
     // 并行获取所有数据
     const [creditsResult, profileResult, transactionsResult] = await Promise.all([
-      // 获取用户积分
       adminSupabase
         .from('user_credits')
         .select('balance, total_earned, total_spent')
         .eq('user_id', user.id)
         .single(),
       
-      // 获取用户套餐
       adminSupabase
         .from('profiles')
         .select('plan_tier')
         .eq('id', user.id)
         .single(),
       
-      // 获取交易记录（带分页）
       adminSupabase
         .from('credit_transactions')
         .select('*', { count: 'exact' })
@@ -57,11 +79,9 @@ export async function GET(request: NextRequest) {
         .range(offset, offset + limit - 1),
     ]);
 
-    console.log('[API Billing] Data fetch:', {
+    console.log('[API Billing] Data:', {
       credits: creditsResult.data,
-      creditsError: creditsResult.error?.message,
-      profile: profileResult.data,
-      transactionsCount: transactionsResult.data?.length,
+      transactions: transactionsResult.data?.length,
     });
 
     const totalPages = transactionsResult.count 
@@ -83,7 +103,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: unknown) {
-    console.error('[API] Billing data error:', error);
+    console.error('[API Billing] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

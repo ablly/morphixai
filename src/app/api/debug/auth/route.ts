@@ -1,85 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 /**
  * 调试 API - 检查当前用户的认证状态和数据
- * 仅用于开发调试，生产环境应禁用
+ * 用于诊断生产环境问题
  */
 export async function GET(request: NextRequest) {
   try {
-    // 检查 cookies
-    const cookieStore = await cookies();
-    const allCookies = cookieStore.getAll();
-    const supabaseCookies = allCookies.filter(c => c.name.includes('supabase') || c.name.includes('sb-'));
+    // 获取所有 cookies
+    const allCookies = request.cookies.getAll();
+    const supabaseCookies = allCookies.filter(c => 
+      c.name.includes('supabase') || c.name.includes('sb-')
+    );
     
-    const supabase = await createClient();
-    const adminSupabase = await createAdminClient();
-    
-    // 1. 检查认证状态
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    // 也检查 session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
-    if (authError && !user) {
-      return NextResponse.json({
-        authenticated: false,
-        error: authError.message,
-        sessionError: sessionError?.message,
-        hint: 'User is not authenticated or session expired',
+    // 创建 Supabase 客户端
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
         cookies: {
-          total: allCookies.length,
-          supabaseRelated: supabaseCookies.map(c => ({ name: c.name, hasValue: !!c.value })),
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll() {},
         },
-      });
-    }
+      }
+    );
+    
+    // 检查认证状态
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (!user) {
       return NextResponse.json({
         authenticated: false,
-        error: 'No user found',
-        hint: 'User needs to login',
+        error: authError?.message || 'No user',
+        sessionError: sessionError?.message,
         cookies: {
           total: allCookies.length,
-          supabaseRelated: supabaseCookies.map(c => ({ name: c.name, hasValue: !!c.value })),
+          supabaseRelated: supabaseCookies.map(c => ({ 
+            name: c.name, 
+            hasValue: !!c.value,
+            valueLength: c.value?.length || 0
+          })),
         },
+        hint: 'User needs to login or session expired',
       });
     }
     
-    // 2. 检查用户数据 (使用普通客户端，测试 RLS)
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+    // 使用 Admin 客户端获取数据
+    const adminSupabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: { autoRefreshToken: false, persistSession: false },
+      }
+    );
     
-    const { data: creditsData, error: creditsError } = await supabase
-      .from('user_credits')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-    
-    const { data: transactionsData, error: transactionsError } = await supabase
-      .from('credit_transactions')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(5);
-    
-    // 3. 使用 Admin 客户端检查数据是否存在 (绕过 RLS)
-    const { data: adminCreditsData } = await adminSupabase
-      .from('user_credits')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-    
-    const { data: adminTransactionsData } = await adminSupabase
-      .from('credit_transactions')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(5);
+    // 获取用户数据
+    const [profileResult, creditsResult, transactionsResult] = await Promise.all([
+      adminSupabase.from('profiles').select('*').eq('id', user.id).single(),
+      adminSupabase.from('user_credits').select('*').eq('user_id', user.id).single(),
+      adminSupabase.from('credit_transactions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
+    ]);
     
     return NextResponse.json({
       authenticated: true,
@@ -94,39 +78,27 @@ export async function GET(request: NextRequest) {
       },
       cookies: {
         total: allCookies.length,
-        supabaseRelated: supabaseCookies.map(c => ({ name: c.name, hasValue: !!c.value })),
+        supabaseRelated: supabaseCookies.map(c => ({ 
+          name: c.name, 
+          hasValue: !!c.value 
+        })),
       },
-      profile: {
-        data: profileData,
-        error: profileError?.message,
-        rlsBlocked: !profileData && !!profileError,
-      },
-      credits: {
-        data: creditsData,
-        error: creditsError?.message,
-        rlsBlocked: !creditsData && !!creditsError,
-        adminData: adminCreditsData,
-      },
+      profile: profileResult.data,
+      credits: creditsResult.data,
       transactions: {
-        data: transactionsData,
-        error: transactionsError?.message,
-        count: transactionsData?.length || 0,
-        adminData: adminTransactionsData,
-        adminCount: adminTransactionsData?.length || 0,
+        count: transactionsResult.data?.length || 0,
+        data: transactionsResult.data,
       },
       diagnosis: {
-        hasProfile: !!profileData,
-        hasCredits: !!creditsData,
-        creditsBalance: creditsData?.balance ?? adminCreditsData?.balance ?? 'N/A',
-        rlsWorking: !!creditsData,
-        dataExists: !!adminCreditsData,
-        transactionsExist: (adminTransactionsData?.length || 0) > 0,
+        hasProfile: !!profileResult.data,
+        hasCredits: !!creditsResult.data,
+        creditsBalance: creditsResult.data?.balance ?? 'N/A',
+        transactionsExist: (transactionsResult.data?.length || 0) > 0,
       },
     });
   } catch (error: unknown) {
     return NextResponse.json({
       error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
     }, { status: 500 });
   }
 }

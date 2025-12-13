@@ -24,8 +24,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 获取应用 URL
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    // 获取应用 URL - 生产环境使用正式域名
+    const appUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://www.morphix-ai.com'
+      : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
     
     // 创建 Checkout Session
     const result = await StripeService.createCheckoutSession(

@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { User, Shield, CreditCard, Users } from 'lucide-react';
+import { Shield, CreditCard, Users } from 'lucide-react';
 
 interface SettingsSidebarProps {
     activeTab: string;
@@ -12,7 +12,6 @@ export function SettingsSidebar({ activeTab, setActiveTab }: SettingsSidebarProp
     const t = useTranslations('Settings');
 
     const tabs = [
-        { id: 'profile', label: t('tabs.profile'), icon: User },
         { id: 'account', label: t('tabs.account'), icon: Shield },
         { id: 'billing', label: t('tabs.billing'), icon: CreditCard },
         { id: 'referrals', label: t('referrals.title'), icon: Users },

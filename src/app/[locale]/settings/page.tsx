@@ -3,7 +3,6 @@
 import { useTranslations, useLocale } from 'next-intl';
 import { FixedUI } from '@/components/FixedUI';
 import { SettingsSidebar } from '@/components/settings/SettingsSidebar';
-import { ProfileTab } from '@/components/settings/ProfileTab';
 import { AccountTab } from '@/components/settings/AccountTab';
 import { BillingTab } from '@/components/settings/BillingTab';
 import { ReferralTab } from '@/components/settings/ReferralTab';
@@ -13,15 +12,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function SettingsPage() {
     const t = useTranslations('Settings');
     useLocale(); // 保持 locale 上下文
-    const [activeTab, setActiveTab] = useState('profile');
+    const [activeTab, setActiveTab] = useState('account');
 
     const renderContent = () => {
         switch (activeTab) {
-            case 'profile': return <ProfileTab />;
             case 'account': return <AccountTab />;
             case 'billing': return <BillingTab />;
             case 'referrals': return <ReferralTab />;
-            default: return <ProfileTab />;
+            default: return <AccountTab />;
         }
     };
 

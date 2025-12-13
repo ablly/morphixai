@@ -128,53 +128,43 @@ export default function CreatePage() {
 
     const creditsRequired = calculateCost();
 
-    // Fetch credits and check auth
+    // Fetch credits and check auth - 使用 API 路由确保服务端认证
     useEffect(() => {
         const fetchCredits = async () => {
-            const supabase = createClient();
-            
-            // 使用 getUser() 获取当前用户 (更可靠)
-            const { data: { user }, error: authError } = await supabase.auth.getUser();
-            
-            if (authError || !user) {
-                console.log('[Create] No authenticated user, redirecting to login');
-                router.push(`/${locale}/login?redirect=/${locale}/create`);
-                return;
-            }
-            
-            console.log('[Create] Fetching credits for user:', user.id);
-            
-            const { data, error } = await supabase
-                .from('user_credits')
-                .select('balance')
-                .eq('user_id', user.id)
-                .single();
-            
-            if (error) {
+            try {
+                const response = await fetch('/api/user/credits');
+                const data = await response.json();
+                
+                if (response.status === 401) {
+                    console.log('[Create] No authenticated user, redirecting to login');
+                    router.push(`/${locale}/login?redirect=/${locale}/create`);
+                    return;
+                }
+                
+                console.log('[Create] Credits loaded:', data.balance);
+                setCredits(data.balance || 0);
+            } catch (error) {
                 console.error('[Create] Error fetching credits:', error);
-                // 如果是 RLS 错误或记录不存在，设置为 0
                 setCredits(0);
-                return;
             }
-            
-            console.log('[Create] Credits loaded:', data?.balance);
-            if (data) setCredits(data.balance);
         };
         fetchCredits();
 
         // 订阅积分变化 - 只监听当前用户
         const supabase = createClient();
+        let creditsChannel: ReturnType<typeof supabase.channel> | null = null;
+        
         const setupCreditsSubscription = async () => {
             const { data: { user: currentUser } } = await supabase.auth.getUser();
-            if (!currentUser) return null;
+            if (!currentUser) return;
             
-            return supabase
+            creditsChannel = supabase
                 .channel(`create-credits-${currentUser.id}`)
                 .on('postgres_changes', { 
                     event: '*', 
                     schema: 'public', 
                     table: 'user_credits',
-                    filter: `user_id=eq.${currentUser.id}` // 只监听当前用户
+                    filter: `user_id=eq.${currentUser.id}`
                 }, (payload) => {
                     console.log('[Create] Credits update:', payload.new);
                     if (payload.new && 'balance' in payload.new) {
@@ -186,10 +176,7 @@ export default function CreatePage() {
                 });
         };
         
-        let creditsChannel: any = null;
-        setupCreditsSubscription().then(channel => {
-            creditsChannel = channel;
-        });
+        setupCreditsSubscription();
 
         return () => {
             if (creditsChannel) supabase.removeChannel(creditsChannel);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -37,20 +37,46 @@ export function BillingTab() {
     const [totalPages, setTotalPages] = useState(1);
     const limit = 10;
 
+    // 使用 API 路由获取数据（服务端认证更可靠）
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await fetch(`/api/user/billing?page=${page}&limit=${limit}`);
+            const result = await response.json();
+            
+            console.log('[BillingTab] API response:', result);
+            
+            if (result.success && result.data) {
+                setCredits(result.data.credits);
+                setPlanTier(result.data.planTier);
+                setTransactions(result.data.transactions);
+                setTotalPages(result.data.pagination.totalPages);
+            } else if (response.status === 401) {
+                console.log('[BillingTab] User not authenticated');
+            }
+        } catch (error) {
+            console.error('[BillingTab] Fetch error:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [page, limit]);
+
     useEffect(() => {
         fetchData();
-    }, [page]);
+    }, [fetchData]);
 
     // 实时订阅积分和交易变化
     useEffect(() => {
         const supabase = createClient();
+        let creditsChannel: ReturnType<typeof supabase.channel> | null = null;
+        let transactionsChannel: ReturnType<typeof supabase.channel> | null = null;
         
         const setupRealtimeSubscription = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
             // 订阅 user_credits 变化
-            const creditsChannel = supabase
+            creditsChannel = supabase
                 .channel('user-credits-changes')
                 .on('postgres_changes', 
                     { event: '*', schema: 'public', table: 'user_credits', filter: `user_id=eq.${user.id}` },
@@ -68,7 +94,7 @@ export function BillingTab() {
                 .subscribe();
 
             // 订阅 credit_transactions 变化
-            const transactionsChannel = supabase
+            transactionsChannel = supabase
                 .channel('credit-transactions-changes')
                 .on('postgres_changes',
                     { event: 'INSERT', schema: 'public', table: 'credit_transactions', filter: `user_id=eq.${user.id}` },
@@ -78,64 +104,15 @@ export function BillingTab() {
                     }
                 )
                 .subscribe();
-
-            return () => {
-                supabase.removeChannel(creditsChannel);
-                supabase.removeChannel(transactionsChannel);
-            };
         };
 
-        const cleanup = setupRealtimeSubscription();
+        setupRealtimeSubscription();
+        
         return () => {
-            cleanup.then(fn => fn?.());
+            if (creditsChannel) supabase.removeChannel(creditsChannel);
+            if (transactionsChannel) supabase.removeChannel(transactionsChannel);
         };
-    }, []);
-
-    const fetchData = async () => {
-        setLoading(true);
-        const supabase = createClient();
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        
-        console.log('[BillingTab] Auth check:', { user: user?.id, error: authError?.message });
-        
-        if (!user) {
-            console.log('[BillingTab] No user found, stopping fetch');
-            setLoading(false);
-            return;
-        }
-
-        // 获取用户积分信息
-        const { data: creditsData, error: creditsError } = await supabase
-            .from('user_credits')
-            .select('balance, total_earned, total_spent')
-            .eq('user_id', user.id)
-            .single();
-        
-        console.log('[BillingTab] Credits fetch:', { data: creditsData, error: creditsError?.message });
-        
-        if (creditsData) setCredits(creditsData);
-
-        // 获取用户套餐
-        const { data: profileData } = await supabase
-            .from('profiles')
-            .select('plan_tier')
-            .eq('id', user.id)
-            .single();
-        if (profileData) setPlanTier(profileData.plan_tier || 'free');
-
-        // 获取所有交易记录（分页）
-        const { data: txData, count } = await supabase
-            .from('credit_transactions')
-            .select('*', { count: 'exact' })
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .range((page - 1) * limit, page * limit - 1);
-
-        if (txData) setTransactions(txData);
-        if (count) setTotalPages(Math.ceil(count / limit));
-
-        setLoading(false);
-    };
+    }, [fetchData]);
 
     const formatDate = (dateStr: string) => {
         return new Date(dateStr).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', {

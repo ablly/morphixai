@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerClient } from '@supabase/ssr';
 import { ReferralService } from '@/lib/referral/service';
 
 export async function GET(request: NextRequest) {
@@ -13,15 +13,53 @@ export async function GET(request: NextRequest) {
   const locale = pathname.split('/')[1] || 'en';
   const next = searchParams.get('next') ?? `/${locale}/dashboard`;
 
+  // 创建 response 用于设置 cookies
+  let response = NextResponse.redirect(`${origin}${next}`);
+
   if (code) {
-    const supabase = await createClient();
+    // 创建 Supabase 客户端，正确处理 cookies
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              response.cookies.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
     
     const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(code);
     
     // 如果是密码重置流程，重定向到重置密码页面
     if (type === 'recovery' && !error && session) {
       console.log('[Auth Callback] Recovery flow detected, redirecting to reset-password');
-      return NextResponse.redirect(`${origin}/${locale}/reset-password`);
+      response = NextResponse.redirect(`${origin}/${locale}/reset-password`);
+      // 重新设置 cookies 到新的 response
+      const supabaseForRecovery = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() {
+              return request.cookies.getAll();
+            },
+            setAll(cookiesToSet) {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                response.cookies.set(name, value, options);
+              });
+            },
+          },
+        }
+      );
+      await supabaseForRecovery.auth.getUser();
+      return response;
     }
     
     if (!error && session?.user) {
@@ -64,10 +102,30 @@ export async function GET(request: NextRequest) {
       }
 
       // 重定向到 dashboard，带上邀请成功标记
-      const redirectUrl = referralCode 
-        ? `${origin}${next}?referral_applied=true`
-        : `${origin}${next}`;
-      return NextResponse.redirect(redirectUrl);
+      if (referralCode) {
+        response = NextResponse.redirect(`${origin}${next}?referral_applied=true`);
+        // 复制 cookies 到新 response
+        const supabaseForRedirect = createServerClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          {
+            cookies: {
+              getAll() {
+                return request.cookies.getAll();
+              },
+              setAll(cookiesToSet) {
+                cookiesToSet.forEach(({ name, value, options }) => {
+                  response.cookies.set(name, value, options);
+                });
+              },
+            },
+          }
+        );
+        await supabaseForRedirect.auth.getUser();
+      }
+      
+      console.log('[Auth Callback] Session established for user:', session.user.id);
+      return response;
     }
   }
 

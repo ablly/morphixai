@@ -86,70 +86,63 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const supabase = createClient();
-
-      // 使用 getUser() 获取当前用户 (更可靠)
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
-      console.log('[Dashboard] Auth check:', { userId: user?.id, error: authError?.message });
-      
-      if (authError || !user) {
-        console.log('[Dashboard] No authenticated user, redirecting to login');
-        router.push(`/${locale}/login?redirect=/${locale}/dashboard`);
-        return;
-      }
-
       try {
-        // 检查并处理邀请码 (首次登录时)
-        const referralCode = user.user_metadata?.referral_code;
-        if (referralCode) {
-          // 检查是否已经处理过邀请
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('referred_by')
-            .eq('id', user.id)
-            .single();
-          
-          // 如果还没有处理过邀请码
-          if (!profile?.referred_by) {
-            try {
-              const res = await fetch('/api/referral', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ referralCode }),
-              });
-              
-              if (res.ok) {
-                addToast('success', locale === 'zh' 
-                  ? '🎉 邀请奖励已发放！你和邀请人各获得 5 积分！' 
-                  : '🎉 Referral bonus applied! You and your referrer each got 5 credits!');
+        // 使用 API 路由获取积分（服务端认证更可靠）
+        const creditsRes = await fetch('/api/user/credits');
+        const creditsData = await creditsRes.json();
+        
+        if (creditsRes.status === 401) {
+          console.log('[Dashboard] No authenticated user, redirecting to login');
+          router.push(`/${locale}/login?redirect=/${locale}/dashboard`);
+          return;
+        }
+        
+        console.log('[Dashboard] Credits loaded:', creditsData.balance);
+        setCredits(creditsData.balance || 0);
+
+        // 获取生成记录 - 使用客户端 Supabase（因为需要实时订阅）
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          // 检查并处理邀请码 (首次登录时)
+          const referralCode = user.user_metadata?.referral_code;
+          if (referralCode) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('referred_by')
+              .eq('id', user.id)
+              .single();
+            
+            if (!profile?.referred_by) {
+              try {
+                const res = await fetch('/api/referral', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ referralCode }),
+                });
+                
+                if (res.ok) {
+                  addToast('success', locale === 'zh' 
+                    ? '🎉 邀请奖励已发放！你和邀请人各获得 5 积分！' 
+                    : '🎉 Referral bonus applied! You and your referrer each got 5 credits!');
+                }
+              } catch (err) {
+                console.error('Failed to process referral:', err);
               }
-            } catch (err) {
-              console.error('Failed to process referral:', err);
             }
           }
-        }
 
-        // 获取积分
-        const { data: creditsData, error: creditsError } = await supabase
-          .from('user_credits')
-          .select('balance')
-          .eq('user_id', user.id)
-          .single();
+          // 获取生成记录
+          const { data: generationsData, error: genError } = await supabase
+            .from('generations')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
 
-        if (!creditsError && creditsData) {
-          setCredits(creditsData.balance);
-        }
-
-        // 获取生成记录
-        const { data: generationsData, error: genError } = await supabase
-          .from('generations')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (!genError && generationsData) {
-          setGenerations(generationsData);
+          if (!genError && generationsData) {
+            setGenerations(generationsData);
+          }
         }
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);

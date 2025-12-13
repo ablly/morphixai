@@ -49,7 +49,7 @@ export default function LoginPage() {
 
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -58,6 +58,14 @@ export default function LoginPage() {
         setError(error.message);
         return;
       }
+
+      // 确保 session 已设置
+      if (!data.session) {
+        setError('Login failed - no session created');
+        return;
+      }
+
+      console.log('[Login] Session established:', data.session.user.id);
 
       // 检查是否是管理员，如果是则跳转到管理后台
       const adminEmails = ['3533912007@qq.com'];

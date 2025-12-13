@@ -1,39 +1,42 @@
 import { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://morphix.ai';
+  const baseUrl = 'https://www.morphix-ai.com';
   const locales = ['en', 'zh'];
   const lastModified = new Date();
 
-  // 静态页面
-  const staticPages = ['', '/features', '/pricing', '/about', '/demo'];
+  // 主要页面
+  const mainPages = [
+    '',           // 首页
+    '/features',  // 功能页
+    '/pricing',   // 定价页
+    '/about',     // 关于页
+    '/demo',      // 演示页
+  ];
 
-  const routes: MetadataRoute.Sitemap = [];
+  // 生成所有语言版本的页面
+  const pages: MetadataRoute.Sitemap = [];
 
-  // 为每个语言生成静态页面
+  // 根路径
+  pages.push({
+    url: baseUrl,
+    lastModified,
+    changeFrequency: 'daily',
+    priority: 1,
+  });
+
+  // 各语言版本的页面
   for (const locale of locales) {
-    for (const page of staticPages) {
-      routes.push({
+    for (const page of mainPages) {
+      const priority = page === '' ? 0.9 : page === '/features' ? 0.8 : 0.7;
+      pages.push({
         url: `${baseUrl}/${locale}${page}`,
         lastModified,
         changeFrequency: page === '' ? 'daily' : 'weekly',
-        priority: page === '' ? 1 : 0.8,
+        priority,
       });
     }
   }
 
-  // 认证页面（较低优先级）
-  const authPages = ['/login', '/signup', '/forgot-password'];
-  for (const locale of locales) {
-    for (const page of authPages) {
-      routes.push({
-        url: `${baseUrl}/${locale}${page}`,
-        lastModified,
-        changeFrequency: 'monthly',
-        priority: 0.5,
-      });
-    }
-  }
-
-  return routes;
+  return pages;
 }

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 
 export class AdminService {
   // 已知管理员邮箱列表
@@ -11,7 +11,8 @@ export class AdminService {
       return true;
     }
 
-    const supabase = await createClient();
+    // 使用 Admin 客户端检查角色（绕过 RLS）
+    const supabase = await createAdminClient();
     const { data } = await supabase
       .from('profiles')
       .select('role, email')
@@ -28,18 +29,25 @@ export class AdminService {
 
   // 获取当前登录用户并验证管理员权限
   static async requireAdmin() {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    // 使用普通客户端获取当前用户（需要 session）
+    const authSupabase = await createClient();
+    const { data: { user }, error: authError } = await authSupabase.auth.getUser();
+    
+    console.log('[AdminService] Auth check:', { userId: user?.id, email: user?.email, error: authError?.message });
     
     if (!user) {
       throw new Error('未登录');
     }
 
     const isAdmin = await this.isAdmin(user.id, user.email || undefined);
+    console.log('[AdminService] Admin check:', { isAdmin, email: user.email });
+    
     if (!isAdmin) {
       throw new Error('无管理员权限');
     }
 
+    // 返回 Admin 客户端用于数据查询（绕过 RLS）
+    const supabase = await createAdminClient();
     return { user, supabase };
   }
 

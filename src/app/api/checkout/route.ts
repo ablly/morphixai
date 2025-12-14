@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { StripeService, CREDIT_PACKAGES } from '@/lib/stripe/service';
+import { StripeService, CREDIT_PACKAGES, FIRST_PURCHASE_DISCOUNT } from '@/lib/stripe/service';
+import { AdminService } from '@/lib/admin/service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,6 +25,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const pkg = CREDIT_PACKAGES[packageId as keyof typeof CREDIT_PACKAGES];
+
     // 获取应用 URL - 生产环境使用正式域名（不带 www，与 Supabase 配置一致）
     const appUrl = process.env.NODE_ENV === 'production' 
       ? 'https://morphix-ai.com'
@@ -44,6 +47,21 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // 记录支付意向（用户点击了购买按钮）
+    const isFirst = await StripeService.isFirstPurchase(user.id);
+    const amountCents = isFirst 
+      ? Math.round(pkg.priceUsd * FIRST_PURCHASE_DISCOUNT * 100)
+      : Math.round(pkg.priceUsd * 100);
+    
+    await AdminService.recordPaymentIntent(
+      user.id,
+      packageId,
+      amountCents,
+      result.sessionId
+    );
+
+    console.log(`[Checkout] Payment intent recorded: user=${user.email}, package=${packageId}, amount=${amountCents}`);
 
     return NextResponse.json({
       sessionId: result.sessionId,

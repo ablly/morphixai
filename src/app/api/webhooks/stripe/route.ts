@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe/server';
 import { StripeService } from '@/lib/stripe/service';
 import { createAdminClient } from '@/lib/supabase/server';
+import { AdminService } from '@/lib/admin/service';
 import type Stripe from 'stripe';
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
@@ -55,6 +56,9 @@ export async function POST(request: NextRequest) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         
+        // 更新支付意向状态为已完成
+        await AdminService.updatePaymentIntentStatus(session.id, 'completed');
+        
         if (session.mode === 'payment') {
           log.info('Processing one-time payment', { sessionId: session.id });
           await StripeService.handleCheckoutCompleted(session);
@@ -66,6 +70,16 @@ export async function POST(request: NextRequest) {
           // 创建订阅记录
           await handleSubscriptionCreated(session);
         }
+        break;
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // 支付会话过期
+      // ═══════════════════════════════════════════════════════════════
+      case 'checkout.session.expired': {
+        const session = event.data.object as Stripe.Checkout.Session;
+        log.info('Checkout session expired', { sessionId: session.id });
+        await AdminService.updatePaymentIntentStatus(session.id, 'expired');
         break;
       }
 

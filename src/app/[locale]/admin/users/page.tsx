@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Search, Loader2, ChevronLeft, ChevronRight, Edit2, X } from 'lucide-react';
+import { Search, Loader2, ChevronLeft, ChevronRight, Edit2, Trash2, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -29,9 +29,11 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [creditAmount, setCreditAmount] = useState('');
   const [creditReason, setCreditReason] = useState('');
   const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -85,6 +87,32 @@ export default function AdminUsersPage() {
       console.error('Failed to update credits:', error);
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deletingUser) return;
+    
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/users/${deletingUser.id}/delete`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setDeletingUser(null);
+        fetchUsers();
+        alert(data.message || '用户已删除');
+      } else {
+        alert(data.error || '删除失败');
+      }
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+      alert('删除失败');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -162,14 +190,28 @@ export default function AdminUsersPage() {
                     {new Date(user.created_at).toLocaleDateString('zh-CN')}
                   </td>
                   <td className="px-6 py-4">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setEditingUser(user)}
-                      className="text-cyan-400 hover:text-cyan-300"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditingUser(user)}
+                        className="text-cyan-400 hover:text-cyan-300"
+                        title="调整积分"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      {user.role !== 'admin' && user.role !== 'super_admin' && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setDeletingUser(user)}
+                          className="text-red-400 hover:text-red-300"
+                          title="删除用户"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -206,6 +248,47 @@ export default function AdminUsersPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deletingUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 border border-red-500/30 rounded-xl p-6 w-full max-w-md">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-red-500/20 rounded-full">
+                <AlertTriangle className="w-6 h-6 text-red-400" />
+              </div>
+              <h2 className="text-xl font-bold text-white">确认删除用户</h2>
+            </div>
+
+            <div className="mb-6 p-4 bg-zinc-800/50 rounded-lg">
+              <p className="text-zinc-400 text-sm mb-1">即将删除用户</p>
+              <p className="text-white font-medium">{deletingUser.email}</p>
+              <p className="text-zinc-500 text-sm mt-2">
+                此操作将永久删除该用户的所有数据，包括积分、交易记录、生成记录等。此操作不可撤销！
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                onClick={() => setDeletingUser(null)}
+                variant="outline"
+                className="flex-1 border-white/10"
+                disabled={deleting}
+              >
+                取消
+              </Button>
+              <Button
+                onClick={handleDeleteUser}
+                disabled={deleting}
+                className="flex-1 bg-red-600 hover:bg-red-700"
+              >
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                确认删除
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Modal */}
       {editingUser && (

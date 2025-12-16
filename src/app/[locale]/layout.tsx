@@ -7,7 +7,7 @@ import { ConfirmProvider } from '@/components/ui/confirm-dialog';
 import { OrganizationJsonLd, SoftwareApplicationJsonLd } from '@/components/seo/JsonLd';
 
 export const metadata: Metadata = {
-    metadataBase: new URL('https://morphix-ai.com'),
+    metadataBase: new URL('https://www.morphix-ai.com'),
     title: {
         default: "Morphix AI - AI 3D Model Generator | Image to 3D",
         template: "%s | Morphix AI",
@@ -32,23 +32,23 @@ export const metadata: Metadata = {
     creator: "Morphix AI",
     publisher: "Morphix AI",
     alternates: {
-        canonical: "https://morphix-ai.com",
+        canonical: "https://www.morphix-ai.com",
         languages: {
-            'en': 'https://morphix-ai.com/en',
-            'zh': 'https://morphix-ai.com/zh',
+            'en': 'https://www.morphix-ai.com/en',
+            'zh': 'https://www.morphix-ai.com/zh',
         },
     },
     openGraph: {
         type: "website",
         locale: "en_US",
         alternateLocale: "zh_CN",
-        url: "https://morphix-ai.com",
+        url: "https://www.morphix-ai.com",
         siteName: "Morphix AI",
         title: "Morphix AI - Text & Image to 3D Generator | Create Game-Ready Assets",
         description: "Turn text and images into high-quality 3D models instantly. Export in GLB, OBJ, FBX. Perfect for game developers and designers.",
         images: [
             {
-                url: "https://morphix-ai.com/og-image.png",
+                url: "https://www.morphix-ai.com/og-image.png",
                 width: 1200,
                 height: 630,
                 alt: "Morphix AI - AI 3D Model Generator",
@@ -61,7 +61,7 @@ export const metadata: Metadata = {
         creator: "@MorphixAI",
         title: "Morphix AI - Text & Image to 3D Generator",
         description: "Turn text and images into high-quality 3D models instantly. The ultimate AI tool for game developers.",
-        images: ["https://morphix-ai.com/og-image.png"],
+        images: ["https://www.morphix-ai.com/og-image.png"],
     },
     robots: {
         index: true,

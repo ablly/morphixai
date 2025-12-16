@@ -27,9 +27,9 @@ export async function POST(request: NextRequest) {
 
     const pkg = CREDIT_PACKAGES[packageId as keyof typeof CREDIT_PACKAGES];
 
-    // 获取应用 URL - 生产环境使用正式域名（不带 www，与 Supabase 配置一致）
+    // 获取应用 URL - 生产环境使用正式域名（带 www，与 Vercel 重定向配置一致）
     const appUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://morphix-ai.com'
+      ? 'https://www.morphix-ai.com'
       : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
     
     // 创建 Checkout Session

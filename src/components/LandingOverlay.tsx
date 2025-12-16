@@ -291,22 +291,6 @@ export function LandingOverlay({ loadingComplete }: LandingOverlayProps) {
                 </motion.div>
             </section>
 
-            {/* Fixed Badge - Bottom Right */}
-            {/* Fixed Badge - Bottom Right */}
-            <div className="fixed bottom-4 right-4 z-50 pointer-events-auto">
-                <a 
-                    href="https://www.nxgntools.com/tools/morphix-ai?utm_source=morphix-ai" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="opacity-60 hover:opacity-100 transition-opacity block"
-                >
-                    <img 
-                        src="https://www.nxgntools.com/api/embed/morphix-ai?type=FEATURED_ON" 
-                        alt="Featured on NextGen Tools" 
-                        className="h-10"
-                    />
-                </a>
-            </div>
         </div>
     );
 }

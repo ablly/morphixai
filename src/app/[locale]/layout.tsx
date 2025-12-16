@@ -9,8 +9,8 @@ import { OrganizationJsonLd, SoftwareApplicationJsonLd } from '@/components/seo/
 export const metadata: Metadata = {
     metadataBase: new URL('https://morphix-ai.com'),
     title: {
-        default: "Morphix AI - Text & Image to 3D Generator | Create Game-Ready Assets in Seconds",
-        template: "%s | Morphix AI - AI 3D Model Generator",
+        default: "Morphix AI - AI 3D Model Generator | Image to 3D",
+        template: "%s | Morphix AI",
     },
     description: "Turn text and images into high-quality 3D models instantly. The ultimate AI tool for game developers, designers and 3D artists. Export in GLB, OBJ, FBX formats. Free trial available.",
     keywords: [

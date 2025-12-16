@@ -351,6 +351,10 @@ export default function CreatePage() {
 
     return (
         <div className="fixed inset-0 bg-black overflow-hidden">
+            {/* SEO: Hidden h1 for search engines */}
+            <h1 className="sr-only">
+                {locale === 'zh' ? 'Morphix AI 3D模型生成器 - 图片转3D' : 'Morphix AI 3D Model Generator - Image to 3D'}
+            </h1>
             <FixedUI />
 
             {/* 3D Canvas */}

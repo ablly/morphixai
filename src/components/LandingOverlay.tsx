@@ -290,6 +290,29 @@ export function LandingOverlay({ loadingComplete }: LandingOverlayProps) {
                     </Link>
                 </motion.div>
             </section>
+
+            {/* Footer Badges */}
+            <section className="w-full py-12 flex justify-center">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="flex flex-wrap gap-4 justify-center items-center"
+                >
+                    <a 
+                        href="https://www.nxgntools.com/tools/morphix-ai?utm_source=morphix-ai" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="opacity-70 hover:opacity-100 transition-opacity"
+                    >
+                        <img 
+                            src="https://www.nxgntools.com/api/embed/morphix-ai?type=FEATURED_ON" 
+                            alt="Featured on NextGen Tools" 
+                            className="h-10"
+                        />
+                    </a>
+                </motion.div>
+            </section>
         </div>
     );
 }

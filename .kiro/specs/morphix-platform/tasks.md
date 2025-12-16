@@ -403,3 +403,17 @@
    - 支持修改显示名称和简介
    - 头像上传 UI（功能待完善）
    - 更新 SettingsSidebar 添加 Profile 标签
+Google Search Console
+
+访问 https://search.google.com/search-console
+添加 morphix-ai.com
+提交 sitemap: https://www.morphix-ai.com/sitemap.xml
+Bing Webmaster Tools
+
+访问 https://www.bing.com/webmasters
+同样添加网站和 sitemap
+提交 AI 导航站（按 Gemini 建议）
+
+Futurepedia
+There's An AI For That
+AI Top Tools

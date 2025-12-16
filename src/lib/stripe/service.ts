@@ -104,6 +104,8 @@ export class StripeService {
           credits: pkg.credits.toString(),
           isFirstPurchase: isFirst.toString(),
         },
+        // 启用促销码输入框，让用户可以输入优惠码
+        allow_promotion_codes: true,
         success_url: successUrl,
         cancel_url: cancelUrl,
       });

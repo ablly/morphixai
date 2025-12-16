@@ -47,5 +47,5 @@ next-env.d.ts
 hitem3d/
 
 # Documentation files (keep local only)
-*.md
+
 !README.md

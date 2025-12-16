@@ -6,102 +6,104 @@ export async function GET(request: NextRequest) {
   try {
     // 验证管理员权限
     await AdminService.requireAdmin();
-    
+
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get('limit') || '20');
     const startingAfter = searchParams.get('starting_after') || undefined;
-    
-    // 获取支付意向列表
-    const paymentIntents = await stripe.paymentIntents.list({
+
+    // 直接获取checkout sessions - 这里有最完整的信息
+    const sessions = await stripe.checkout.sessions.list({
       limit,
       starting_after: startingAfter,
-      expand: ['data.customer', 'data.latest_charge'],
+      expand: ['data.line_items', 'data.total_details.breakdown'],
     });
-
-    // 获取最近的checkout sessions来匹配促销码
-    const sessions = await stripe.checkout.sessions.list({
-      limit: 100,
-      expand: ['data.total_details'],
-    });
-
-    // 创建session映射
-    const sessionMap = new Map<string, any>();
-    for (const session of sessions.data) {
-      if (session.payment_intent) {
-        const piId = typeof session.payment_intent === 'string' 
-          ? session.payment_intent 
-          : session.payment_intent.id;
-        sessionMap.set(piId, session);
-      }
-    }
 
     // 格式化数据
-    const payments = await Promise.all(paymentIntents.data.map(async (pi) => {
-      const session = sessionMap.get(pi.id);
-      let promoCode: string | null = null;
-      let discountAmount = 0;
-      
-      // 尝试获取促销码信息
-      if (session?.total_details?.breakdown?.discounts) {
-        for (const discount of session.total_details.breakdown.discounts) {
-          discountAmount += discount.amount;
-          if (discount.discount?.promotion_code) {
-            try {
-              const promoId = typeof discount.discount.promotion_code === 'string'
-                ? discount.discount.promotion_code
-                : discount.discount.promotion_code;
-              const promo = await stripe.promotionCodes.retrieve(promoId);
-              promoCode = promo.code;
-            } catch (e) {
-              // ignore
+    const payments = await Promise.all(
+      sessions.data.map(async (session) => {
+        let promoCode: string | null = null;
+        let discountAmount = 0;
+
+        // 获取促销码信息
+        if (session.total_details?.breakdown?.discounts) {
+          for (const discount of session.total_details.breakdown.discounts) {
+            discountAmount += discount.amount;
+            if (discount.discount?.promotion_code) {
+              try {
+                const promoCodeObj = discount.discount.promotion_code;
+                if (typeof promoCodeObj === 'string') {
+                  const promo = await stripe.promotionCodes.retrieve(promoCodeObj);
+                  promoCode = promo.code;
+                } else {
+                  promoCode = promoCodeObj.code;
+                }
+              } catch {
+                // ignore
+              }
             }
           }
         }
-      }
 
-      const customer = pi.customer;
-      let customerEmail: string | null = null;
-      let customerName: string | null = null;
-      
-      if (customer && typeof customer !== 'string' && 'email' in customer) {
-        customerEmail = customer.email || null;
-        customerName = customer.name || null;
-      }
+        // 获取收据URL
+        let receiptUrl: string | null = null;
+        if (session.payment_intent) {
+          try {
+            const piId =
+              typeof session.payment_intent === 'string'
+                ? session.payment_intent
+                : session.payment_intent.id;
+            const pi = await stripe.paymentIntents.retrieve(piId, {
+              expand: ['latest_charge'],
+            });
+            const charge = pi.latest_charge;
+            if (charge && typeof charge !== 'string') {
+              receiptUrl = charge.receipt_url;
+            }
+          } catch {
+            // ignore
+          }
+        }
 
-      // 获取charge信息
-      const charge = pi.latest_charge;
-      let receiptUrl: string | null = null;
-      if (charge && typeof charge !== 'string') {
-        receiptUrl = charge.receipt_url;
-      }
+        // 获取套餐信息
+        const packageId = session.metadata?.packageId || '-';
+        const userId = session.metadata?.userId || '-';
 
-      return {
-        id: pi.id,
-        amount: pi.amount,
-        currency: pi.currency,
-        status: pi.status,
-        created: pi.created,
-        customerEmail,
-        customerName,
-        metadata: pi.metadata,
-        promoCode,
-        discountAmount,
-        originalAmount: pi.amount + discountAmount,
-        receiptUrl,
-        description: pi.description,
-      };
-    }));
+        return {
+          id: session.id,
+          paymentIntentId:
+            typeof session.payment_intent === 'string'
+              ? session.payment_intent
+              : session.payment_intent?.id || null,
+          amount: session.amount_total || 0,
+          amountSubtotal: session.amount_subtotal || 0,
+          currency: session.currency || 'usd',
+          status: session.payment_status,
+          sessionStatus: session.status,
+          created: Math.floor(new Date(session.created * 1000).getTime() / 1000),
+          customerEmail: session.customer_details?.email || session.customer_email || null,
+          customerName: session.customer_details?.name || null,
+          metadata: session.metadata || {},
+          promoCode,
+          discountAmount,
+          originalAmount: (session.amount_subtotal || 0),
+          receiptUrl,
+          packageId,
+          userId,
+        };
+      })
+    );
 
     return NextResponse.json({
       payments,
-      hasMore: paymentIntents.has_more,
+      hasMore: sessions.has_more,
       lastId: payments.length > 0 ? payments[payments.length - 1].id : null,
     });
-  } catch (error: any) {
-    console.error('[Admin Stripe] Error:', error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('[Admin Stripe] Error:', err);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch Stripe payments' },
-      { status: error.message?.includes('Unauthorized') ? 401 : 500 }
+      { error: err.message || 'Failed to fetch Stripe payments' },
+      { status: err.message?.includes('Unauthorized') ? 401 : 500 }
     );
   }
 }

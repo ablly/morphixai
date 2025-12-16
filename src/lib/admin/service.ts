@@ -447,7 +447,12 @@ export class AdminService {
   // 更新支付意向状态
   static async updatePaymentIntentStatus(
     stripeSessionId: string, 
-    status: 'completed' | 'cancelled' | 'expired'
+    status: 'completed' | 'cancelled' | 'expired',
+    paymentDetails?: {
+      promoCode?: string;
+      discountAmountCents?: number;
+      finalAmountCents?: number;
+    }
   ) {
     const supabase = await createAdminClient();
     
@@ -458,6 +463,19 @@ export class AdminService {
 
     if (status === 'completed') {
       updateData.completed_at = new Date().toISOString();
+    }
+
+    // 添加促销码和金额信息
+    if (paymentDetails) {
+      if (paymentDetails.promoCode) {
+        updateData.promo_code = paymentDetails.promoCode;
+      }
+      if (paymentDetails.discountAmountCents !== undefined) {
+        updateData.discount_amount_cents = paymentDetails.discountAmountCents;
+      }
+      if (paymentDetails.finalAmountCents !== undefined) {
+        updateData.final_amount_cents = paymentDetails.finalAmountCents;
+      }
     }
 
     const { error } = await supabase

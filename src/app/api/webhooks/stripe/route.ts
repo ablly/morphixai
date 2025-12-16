@@ -56,8 +56,43 @@ export async function POST(request: NextRequest) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         
-        // 更新支付意向状态为已完成
-        await AdminService.updatePaymentIntentStatus(session.id, 'completed');
+        // 获取促销码信息
+        let promoCode: string | undefined;
+        let discountAmountCents = 0;
+        const finalAmountCents = session.amount_total || 0;
+        
+        // 检查是否使用了促销码
+        if (session.total_details?.breakdown?.discounts) {
+          for (const discount of session.total_details.breakdown.discounts) {
+            discountAmountCents += discount.amount;
+            // 获取促销码名称
+            if (discount.discount?.promotion_code) {
+              try {
+                const promoCodeId = typeof discount.discount.promotion_code === 'string' 
+                  ? discount.discount.promotion_code 
+                  : discount.discount.promotion_code;
+                const promoCodeObj = await stripe.promotionCodes.retrieve(promoCodeId as string);
+                promoCode = promoCodeObj.code;
+              } catch (e) {
+                log.warn('Failed to retrieve promo code', e);
+              }
+            }
+          }
+        }
+        
+        log.info('Payment details', { 
+          sessionId: session.id, 
+          promoCode, 
+          discountAmountCents, 
+          finalAmountCents 
+        });
+        
+        // 更新支付意向状态为已完成，包含促销码信息
+        await AdminService.updatePaymentIntentStatus(session.id, 'completed', {
+          promoCode,
+          discountAmountCents,
+          finalAmountCents,
+        });
         
         if (session.mode === 'payment') {
           log.info('Processing one-time payment', { sessionId: session.id });

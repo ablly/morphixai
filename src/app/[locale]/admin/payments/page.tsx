@@ -14,6 +14,9 @@ interface PaymentIntent {
   status: string;
   created_at: string;
   completed_at: string | null;
+  promo_code: string | null;
+  discount_amount_cents: number | null;
+  final_amount_cents: number | null;
   profiles: { email: string; full_name: string | null } | null;
 }
 
@@ -114,7 +117,9 @@ export default function AdminPaymentsPage() {
               <tr>
                 <th className="px-6 py-4 text-left text-sm font-medium text-zinc-400">用户</th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-zinc-400">套餐</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-zinc-400">金额</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-zinc-400">原价</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-zinc-400">实付</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-zinc-400">促销码</th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-zinc-400">状态</th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-zinc-400">点击时间</th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-zinc-400">完成时间</th>
@@ -123,13 +128,13 @@ export default function AdminPaymentsPage() {
             <tbody className="divide-y divide-white/5">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
+                  <td colSpan={8} className="px-6 py-12 text-center">
                     <Loader2 className="w-6 h-6 text-cyan-400 animate-spin mx-auto" />
                   </td>
                 </tr>
               ) : data?.paymentIntents.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-zinc-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-zinc-500">
                     暂无支付记录
                   </td>
                 </tr>
@@ -146,8 +151,31 @@ export default function AdminPaymentsPage() {
                       {packageLabels[intent.package_id] || intent.package_id}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-white font-mono">
+                  <td className="px-6 py-4 text-zinc-400 font-mono">
                     ${(intent.amount_cents / 100).toFixed(2)}
+                  </td>
+                  <td className="px-6 py-4">
+                    {intent.final_amount_cents !== null ? (
+                      <span className="text-green-400 font-mono font-medium">
+                        ${(intent.final_amount_cents / 100).toFixed(2)}
+                      </span>
+                    ) : (
+                      <span className="text-zinc-500">-</span>
+                    )}
+                    {intent.discount_amount_cents && intent.discount_amount_cents > 0 && (
+                      <span className="ml-2 text-xs text-orange-400">
+                        (-${(intent.discount_amount_cents / 100).toFixed(2)})
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    {intent.promo_code ? (
+                      <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs font-mono">
+                        {intent.promo_code}
+                      </span>
+                    ) : (
+                      <span className="text-zinc-500">-</span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${statusColors[intent.status] || 'bg-zinc-700 text-zinc-300'}`}>

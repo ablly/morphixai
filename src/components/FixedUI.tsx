@@ -223,7 +223,7 @@ export function FixedUI() {
                 <div className="text-xs text-gray-600">
                     {tFooter('copyright')}
                 </div>
-                <div className="flex items-center space-x-6">
+                <div className="flex items-center space-x-4 md:space-x-6">
                     <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-600 hover:text-white transition-colors">
                         {tFooter('twitter')}
                     </a>
@@ -233,6 +233,32 @@ export function FixedUI() {
                     <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-600 hover:text-white transition-colors">
                         {tFooter('github')}
                     </a>
+                    <div className="hidden md:flex items-center space-x-2 ml-2">
+                        <a 
+                            href="https://www.nxgntools.com/tools/morphix-ai?utm_source=morphix-ai" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="opacity-70 hover:opacity-100 transition-opacity"
+                        >
+                            <img 
+                                src="https://www.nxgntools.com/api/embed/morphix-ai?type=FEATURED_ON" 
+                                alt="Featured on NextGen Tools" 
+                                className="h-6"
+                            />
+                        </a>
+                        <a 
+                            href="https://frogdr.com/morphix-ai.com?utm_source=morphix-ai.com" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="opacity-70 hover:opacity-100 transition-opacity"
+                        >
+                            <img 
+                                src="https://frogdr.com/morphix-ai.com/badge-white.svg" 
+                                alt="Monitor your Domain Rating with FrogDR" 
+                                className="h-6"
+                            />
+                        </a>
+                    </div>
                 </div>
             </footer>
         </div>

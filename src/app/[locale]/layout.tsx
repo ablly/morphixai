@@ -75,8 +75,8 @@ export const metadata: Metadata = {
         },
     },
     verification: {
-        // 添加 Google Search Console 验证码（需要你从 GSC 获取）
-        // google: 'your-google-verification-code',
+        // 已使用文件验证方式：public/google2e5bee65a6daa4b1.html 和 public/BingSiteAuth.xml
+        // 无需在此添加 meta 标签验证
     },
     category: 'technology',
 };

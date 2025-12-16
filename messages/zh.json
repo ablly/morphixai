@@ -18,10 +18,10 @@
         "github": "GITHUB"
     },
     "Hero": {
-        "title": "神经几何引擎",
-        "subtitle": "从想象到体素现实",
-        "description": "Morphix AI 利用先进的神经渲染协议，将二维视觉数据转化为高保真三维拓扑结构。体验数字合成的下一次进化。",
-        "cta": "初始化生成",
+        "title": "AI 3D 模型生成器",
+        "subtitle": "文字转3D · 图片转3D · 秒级生成",
+        "description": "Morphix AI 是强大的 AI 3D 生成器，能将文字描述和图片即时转换为高质量、游戏可用的 3D 模型。支持导出 GLB、OBJ、FBX 格式，立即免费试用。",
+        "cta": "免费开始创作",
         "demo": "体验演示"
     },
     "Features": {

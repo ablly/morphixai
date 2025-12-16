@@ -18,10 +18,10 @@
         "github": "GITHUB"
     },
     "Hero": {
-        "title": "NEURAL GEOMETRY ENGINE",
-        "subtitle": "FROM IMAGINATION TO VOXEL REALITY",
-        "description": "Morphix AI utilizes advanced neural rendering protocols to transmute 2D visual data into high-fidelity 3D topological structures. Experience the next evolution of digital synthesis.",
-        "cta": "INITIALIZE GENERATION",
+        "title": "AI 3D MODEL GENERATOR",
+        "subtitle": "TEXT TO 3D. IMAGE TO 3D. INSTANT.",
+        "description": "Morphix AI is a powerful AI 3D generator that transforms text prompts and images into high-quality, game-ready 3D models. Export in GLB, OBJ, FBX formats. Free trial available.",
+        "cta": "START CREATING FREE",
         "demo": "VIEW DEMO"
     },
     "Features": {

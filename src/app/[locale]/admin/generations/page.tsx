@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Loader2, ChevronLeft, ChevronRight, Filter, RefreshCw, Wifi, WifiOff, CheckCircle, AlertCircle } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Filter, RefreshCw, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 
@@ -18,6 +18,7 @@ interface Generation {
   created_at: string;
   completed_at: string | null;
   fal_request_id: string | null;
+  metadata: { error?: { status?: number; message?: string }; failed_at?: string } | null;
   profiles: { email: string; full_name: string | null } | null;
 }
 
@@ -196,7 +197,7 @@ export default function AdminGenerationsPage() {
                 <th className="px-6 py-4 text-left text-sm font-medium text-zinc-400">模式</th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-zinc-400">引擎</th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-zinc-400">积分</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-zinc-400">私密</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-zinc-400">错误信息</th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-zinc-400">创建时间</th>
               </tr>
             </thead>
@@ -224,10 +225,19 @@ export default function AdminGenerationsPage() {
                   <td className="px-6 py-4 text-zinc-300">{gen.engine || 'fal-ai'}</td>
                   <td className="px-6 py-4 text-cyan-400">{gen.credits_used}</td>
                   <td className="px-6 py-4">
-                    {gen.is_private ? (
-                      <span className="text-yellow-400">是</span>
+                    {gen.status === 'FAILED' && gen.metadata?.error ? (
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-red-400" />
+                        <span className="text-red-400 text-sm">
+                          {gen.metadata.error.status === 403 ? 'API余额不足' : 
+                           gen.metadata.error.status === 401 ? 'API密钥无效' :
+                           gen.metadata.error.message || '未知错误'}
+                        </span>
+                      </div>
+                    ) : gen.status === 'FAILED' ? (
+                      <span className="text-red-400 text-sm">生成失败</span>
                     ) : (
-                      <span className="text-zinc-500">否</span>
+                      <span className="text-zinc-500">-</span>
                     )}
                   </td>
                   <td className="px-6 py-4 text-zinc-400 text-sm">

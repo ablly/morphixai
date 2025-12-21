@@ -110,27 +110,39 @@ export async function POST(request: NextRequest) {
       image_url: sourceImageUrl,
     };
 
-    // Submit to Fal.ai Queue with webhook
-    const falResult = await fal.queue.submit(endpoint, {
-      input: falInput,
-      webhookUrl: webhookUrl,
-    });
+    // Try to submit to Fal.ai Queue with webhook
+    let falResult: { request_id: string } | null = null;
+    let falError: { status?: number; message?: string } | null = null;
 
-    log.info('Fal.ai request submitted', { 
-      requestId: falResult.request_id,
-      endpoint 
-    });
+    try {
+      falResult = await fal.queue.submit(endpoint, {
+        input: falInput,
+        webhookUrl: webhookUrl,
+      });
 
-    // Create Generation Record in Database
+      log.info('Fal.ai request submitted', { 
+        requestId: falResult.request_id,
+        endpoint 
+      });
+    } catch (error: any) {
+      log.error('Fal.ai submission failed', error);
+      falError = {
+        status: error.status,
+        message: error.message || 'Fal.ai API error',
+      };
+    }
+
+    // Create Generation Record in Database (regardless of fal.ai success/failure)
+    const generationStatus = falError ? 'FAILED' : 'PROCESSING';
     const { data: generation, error: genError } = await supabase
       .from('generations')
       .insert({
         user_id: user.id,
         source_image_url: sourceImageUrl,
         engine: 'fal-ai-sam3',
-        status: 'PROCESSING',
-        credits_used: creditsRequired,
-        fal_request_id: falResult.request_id,
+        status: generationStatus,
+        credits_used: falError ? 0 : creditsRequired, // Don't charge for failed requests
+        fal_request_id: falResult?.request_id || null,
         is_private: isPrivate,
         mode: mode,
         metadata: { 
@@ -138,6 +150,10 @@ export async function POST(request: NextRequest) {
           isPriority, 
           endpoint,
           falInput,
+          ...(falError && { 
+            error: falError,
+            failed_at: new Date().toISOString(),
+          }),
         },
       })
       .select()
@@ -145,9 +161,39 @@ export async function POST(request: NextRequest) {
 
     if (genError) {
       log.error('Failed to create generation record', genError);
-      // Refund credits on database error
-      await CreditsService.refundCredits(user.id, creditsRequired, 'failed_db_insert');
+      // Refund credits on database error (only if we deducted them)
+      if (!falError) {
+        await CreditsService.refundCredits(user.id, creditsRequired, 'failed_db_insert');
+      }
       return NextResponse.json({ error: 'Database error' }, { status: 500 });
+    }
+
+    // If fal.ai failed, refund credits and return error
+    if (falError) {
+      await CreditsService.refundCredits(user.id, creditsRequired, `fal_api_error_${falError.status}`);
+      
+      // Return appropriate error based on fal.ai error type
+      if (falError.status === 403) {
+        return NextResponse.json({ 
+          error: 'Service temporarily unavailable. Please try again later.',
+          code: 'FAL_FORBIDDEN',
+          generationId: generation.id,
+        }, { status: 503 });
+      }
+      
+      if (falError.status === 401) {
+        return NextResponse.json({ 
+          error: 'Service configuration error. Please contact support.',
+          code: 'FAL_UNAUTHORIZED',
+          generationId: generation.id,
+        }, { status: 503 });
+      }
+
+      return NextResponse.json({ 
+        error: falError.message || 'Generation failed',
+        code: 'FAL_ERROR',
+        generationId: generation.id,
+      }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -161,22 +207,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     log.error('Generation error', error);
-    
-    // Handle specific Fal.ai errors
-    if (error.status === 403) {
-      return NextResponse.json({ 
-        error: 'Fal.ai API access denied. Please check billing at https://fal.ai/dashboard/billing',
-        code: 'FAL_FORBIDDEN'
-      }, { status: 503 });
-    }
-    
-    if (error.status === 401) {
-      return NextResponse.json({ 
-        error: 'Fal.ai API key invalid. Please check FAL_KEY configuration.',
-        code: 'FAL_UNAUTHORIZED'
-      }, { status: 503 });
-    }
-
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }

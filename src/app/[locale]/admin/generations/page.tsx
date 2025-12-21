@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Loader2, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { Loader2, ChevronLeft, ChevronRight, Filter, RefreshCw, Wifi, WifiOff, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { createClient } from '@/lib/supabase/client';
 
 interface Generation {
   id: string;
@@ -16,6 +17,7 @@ interface Generation {
   is_private: boolean;
   created_at: string;
   completed_at: string | null;
+  fal_request_id: string | null;
   profiles: { email: string; full_name: string | null } | null;
 }
 
@@ -31,13 +33,13 @@ export default function AdminGenerationsPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
+  const [isRealtime, setIsRealtime] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null);
 
-  useEffect(() => {
-    fetchGenerations();
-  }, [page, statusFilter]);
-
-  const fetchGenerations = async () => {
-    setLoading(true);
+  const fetchGenerations = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const params = new URLSearchParams({ page: page.toString(), limit: '20' });
       if (statusFilter) params.set('status', statusFilter);
@@ -46,11 +48,69 @@ export default function AdminGenerationsPage() {
       if (res.ok) {
         const result = await res.json();
         setData(result);
+        setLastUpdate(new Date());
       }
     } catch (error) {
       console.error('Failed to fetch generations:', error);
     } finally {
       setLoading(false);
+    }
+  }, [page, statusFilter]);
+
+  // 初始加载
+  useEffect(() => {
+    fetchGenerations();
+  }, [fetchGenerations]);
+
+  // Supabase Realtime 订阅
+  useEffect(() => {
+    const supabase = createClient();
+    
+    // 订阅 generations 表的变化
+    const channel = supabase
+      .channel('admin-generations-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'generations',
+        },
+        (payload) => {
+          console.log('[Realtime] Generation change:', payload.eventType, payload.new);
+          // 收到变化时刷新数据（不显示 loading）
+          fetchGenerations(false);
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Realtime] Subscription status:', status);
+        setIsRealtime(status === 'SUBSCRIBED');
+      });
+
+    channelRef.current = channel;
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+    };
+  }, [fetchGenerations]);
+
+  // 同步处理中的任务状态（与 fal.ai 核对）
+  const syncProcessingTasks = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch('/api/admin/generations/sync', { method: 'POST' });
+      if (res.ok) {
+        const result = await res.json();
+        console.log('[Sync] Result:', result);
+        // 刷新数据
+        await fetchGenerations(false);
+      }
+    } catch (error) {
+      console.error('Failed to sync:', error);
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -61,9 +121,53 @@ export default function AdminGenerationsPage() {
     FAILED: 'bg-red-500/20 text-red-400',
   };
 
+  // 计算处理中的任务数量
+  const processingCount = data?.generations.filter(g => 
+    g.status === 'PROCESSING' || g.status === 'PENDING'
+  ).length || 0;
+
   return (
     <div>
-      <h1 className="text-2xl font-bold text-white mb-8">生成记录</h1>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-2xl font-bold text-white">生成记录</h1>
+        
+        {/* 实时状态指示器 */}
+        <div className="flex items-center gap-4">
+          {/* 实时连接状态 */}
+          <div className="flex items-center gap-2 text-sm">
+            {isRealtime ? (
+              <>
+                <Wifi className="w-4 h-4 text-green-400" />
+                <span className="text-green-400">实时同步</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-4 h-4 text-zinc-500" />
+                <span className="text-zinc-500">离线</span>
+              </>
+            )}
+          </div>
+
+          {/* 最后更新时间 */}
+          {lastUpdate && (
+            <span className="text-xs text-zinc-500">
+              更新于 {lastUpdate.toLocaleTimeString('zh-CN')}
+            </span>
+          )}
+
+          {/* 同步按钮 */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={syncProcessingTasks}
+            disabled={syncing || processingCount === 0}
+            className="border-white/10 gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? '同步中...' : `同步状态 (${processingCount})`}
+          </Button>
+        </div>
+      </div>
 
       {/* Filters */}
       <div className="mb-6 flex gap-4 items-center">

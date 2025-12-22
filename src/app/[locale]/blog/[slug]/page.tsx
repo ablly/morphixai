@@ -176,21 +176,118 @@ export default async function BlogPostPage({ params }: Props) {
 
         {/* Content */}
         <div 
-          className="prose prose-invert prose-lg max-w-none
-            prose-headings:text-white prose-headings:font-bold
-            prose-h2:text-2xl prose-h2:mt-12 prose-h2:mb-4
-            prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3
-            prose-p:text-zinc-300 prose-p:leading-relaxed
-            prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:underline
-            prose-strong:text-white
-            prose-code:text-cyan-400 prose-code:bg-zinc-800 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
-            prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-white/10
-            prose-ul:text-zinc-300 prose-ol:text-zinc-300
-            prose-li:marker:text-cyan-400
-            prose-blockquote:border-l-cyan-400 prose-blockquote:text-zinc-400
-            prose-img:rounded-xl"
+          className="blog-content prose prose-invert prose-lg max-w-none"
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
+        
+        {/* Custom styles for blog content */}
+        <style jsx global>{`
+          .blog-content {
+            color: #e4e4e7 !important;
+          }
+          .blog-content h1,
+          .blog-content h2,
+          .blog-content h3,
+          .blog-content h4,
+          .blog-content h5,
+          .blog-content h6 {
+            color: #ffffff !important;
+            font-weight: 700;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+          }
+          .blog-content h2 {
+            font-size: 1.75rem;
+            margin-top: 3rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+          }
+          .blog-content h3 {
+            font-size: 1.375rem;
+            margin-top: 2rem;
+          }
+          .blog-content p {
+            color: #d4d4d8 !important;
+            line-height: 1.8;
+            margin-bottom: 1.25rem;
+          }
+          .blog-content a {
+            color: #22d3ee !important;
+            text-decoration: none;
+          }
+          .blog-content a:hover {
+            text-decoration: underline;
+          }
+          .blog-content strong {
+            color: #ffffff !important;
+            font-weight: 600;
+          }
+          .blog-content ul,
+          .blog-content ol {
+            color: #d4d4d8 !important;
+            margin: 1.25rem 0;
+            padding-left: 1.5rem;
+          }
+          .blog-content li {
+            color: #d4d4d8 !important;
+            margin-bottom: 0.5rem;
+          }
+          .blog-content li::marker {
+            color: #22d3ee;
+          }
+          .blog-content code {
+            color: #22d3ee !important;
+            background: #27272a;
+            padding: 0.125rem 0.375rem;
+            border-radius: 0.25rem;
+            font-size: 0.875em;
+          }
+          .blog-content pre {
+            background: #18181b !important;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+          }
+          .blog-content pre code {
+            background: transparent;
+            padding: 0;
+            color: #e4e4e7 !important;
+          }
+          .blog-content blockquote {
+            border-left: 4px solid #22d3ee;
+            padding-left: 1rem;
+            color: #a1a1aa !important;
+            font-style: italic;
+            margin: 1.5rem 0;
+          }
+          .blog-content img {
+            border-radius: 0.75rem;
+            margin: 1.5rem 0;
+          }
+          .blog-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+          }
+          .blog-content th,
+          .blog-content td {
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 0.75rem;
+            text-align: left;
+            color: #d4d4d8 !important;
+          }
+          .blog-content th {
+            background: #27272a;
+            color: #ffffff !important;
+            font-weight: 600;
+          }
+          .blog-content hr {
+            border-color: rgba(255,255,255,0.1);
+            margin: 2rem 0;
+          }
+        `}</style>
 
         {/* Share */}
         <div className="mt-12 pt-8 border-t border-white/10">

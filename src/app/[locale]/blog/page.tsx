@@ -2,6 +2,7 @@ import { getAllPosts } from '@/lib/blog';
 import Link from 'next/link';
 import { Calendar, Clock, ArrowRight } from 'lucide-react';
 import type { Metadata } from 'next';
+import { FixedUI } from '@/components/FixedUI';
 
 interface Props {
   params: Promise<{ locale: string }>;
@@ -29,34 +30,11 @@ export default async function BlogPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-black">
-      {/* Header */}
-      <header className="border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href={`/${locale}`} className="text-xl font-bold text-white">
-            Morphix <span className="text-cyan-400">AI</span>
-          </Link>
-          <nav className="flex items-center gap-6">
-            <Link href={`/${locale}/features`} className="text-zinc-400 hover:text-white transition">
-              {isZh ? '特性' : 'Features'}
-            </Link>
-            <Link href={`/${locale}/pricing`} className="text-zinc-400 hover:text-white transition">
-              {isZh ? '定价' : 'Pricing'}
-            </Link>
-            <Link href={`/${locale}/blog`} className="text-white font-medium">
-              {isZh ? '博客' : 'Blog'}
-            </Link>
-            <Link 
-              href={`/${locale}/create`}
-              className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-lg text-white font-medium hover:opacity-90 transition"
-            >
-              {isZh ? '开始创作' : 'Start Creating'}
-            </Link>
-          </nav>
-        </div>
-      </header>
+      {/* Navigation */}
+      <FixedUI />
 
-      {/* Hero */}
-      <section className="py-20 px-4">
+      {/* Hero - 添加顶部间距以避免被固定导航遮挡 */}
+      <section className="pt-28 pb-12 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
             {isZh ? 'AI 3D 生成博客' : 'AI 3D Generation Blog'}
@@ -139,7 +117,7 @@ export default async function BlogPage({ params }: Props) {
       </section>
 
       {/* CTA */}
-      <section className="py-20 px-4 border-t border-white/10">
+      <section className="py-20 px-4 border-t border-white/10 mb-20">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl font-bold text-white mb-4">
             {isZh ? '准备好开始创作了吗？' : 'Ready to Start Creating?'}

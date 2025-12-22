@@ -1,14 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocale } from 'next-intl';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
-import { Globe, Menu, X } from 'lucide-react';
+import { Globe, Menu, X, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+
+const languages = [
+    { code: 'en', label: 'English', flag: '🇺🇸' },
+    { code: 'zh', label: '中文', flag: '🇨🇳' },
+];
 
 export function FixedUI() {
     const t = useTranslations('Nav');
@@ -17,7 +22,9 @@ export function FixedUI() {
     const router = useRouter();
     const pathname = usePathname();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [langDropdownOpen, setLangDropdownOpen] = useState(false);
     const [user, setUser] = useState<SupabaseUser | null>(null);
+    const langDropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const supabase = createClient();
@@ -33,13 +40,26 @@ export function FixedUI() {
         return () => subscription.unsubscribe();
     }, []);
 
-    const toggleLanguage = () => {
-        const newLocale = locale === 'en' ? 'zh' : 'en';
+    // 点击外部关闭下拉菜单
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (langDropdownRef.current && !langDropdownRef.current.contains(event.target as Node)) {
+                setLangDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const switchLanguage = (newLocale: string) => {
         const segments = pathname.split('/');
         segments[1] = newLocale;
         const newPath = segments.join('/');
         router.push(newPath);
+        setLangDropdownOpen(false);
     };
+
+    const currentLang = languages.find(l => l.code === locale) || languages[0];
 
     const handleLogout = async () => {
         const supabase = createClient();
@@ -88,13 +108,35 @@ export function FixedUI() {
 
                 {/* Desktop Actions */}
                 <div className="hidden md:flex items-center space-x-4">
-                    <button
-                        onClick={toggleLanguage}
-                        className="p-2 text-gray-400 hover:text-white transition-colors flex items-center space-x-1"
-                    >
-                        <Globe size={18} />
-                        <span className="text-xs font-bold uppercase">{locale === 'en' ? 'EN' : '中'}</span>
-                    </button>
+                    {/* Language Dropdown */}
+                    <div className="relative" ref={langDropdownRef}>
+                        <button
+                            onClick={() => setLangDropdownOpen(!langDropdownOpen)}
+                            className="p-2 text-gray-400 hover:text-white transition-colors flex items-center space-x-1"
+                        >
+                            <Globe size={18} />
+                            <span className="text-xs font-bold">{currentLang.flag} {currentLang.code.toUpperCase()}</span>
+                            <ChevronDown size={14} className={`transition-transform ${langDropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        
+                        {langDropdownOpen && (
+                            <div className="absolute top-full right-0 mt-2 py-2 bg-zinc-900 border border-white/10 rounded-lg shadow-xl min-w-[140px] z-50">
+                                {languages.map((lang) => (
+                                    <button
+                                        key={lang.code}
+                                        onClick={() => switchLanguage(lang.code)}
+                                        className={`w-full px-4 py-2 text-left text-sm flex items-center space-x-2 hover:bg-white/10 transition-colors ${
+                                            locale === lang.code ? 'text-cyan-400' : 'text-gray-300'
+                                        }`}
+                                    >
+                                        <span>{lang.flag}</span>
+                                        <span>{lang.label}</span>
+                                        {locale === lang.code && <span className="ml-auto">✓</span>}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
 
                     <div className="h-4 w-[1px] bg-gray-700"></div>
 
@@ -178,13 +220,31 @@ export function FixedUI() {
                         ))}
 
                         <div className="pt-4 space-y-4">
-                            <button
-                                onClick={toggleLanguage}
-                                className="flex items-center space-x-2 text-gray-400"
-                            >
-                                <Globe size={20} />
-                                <span>{locale === 'en' ? 'English' : '中文'}</span>
-                            </button>
+                            {/* Mobile Language Selector */}
+                            <div className="border-b border-white/10 pb-4">
+                                <p className="text-xs text-gray-500 mb-2 uppercase tracking-wider">
+                                    {locale === 'en' ? 'Language' : '语言'}
+                                </p>
+                                <div className="flex gap-2">
+                                    {languages.map((lang) => (
+                                        <button
+                                            key={lang.code}
+                                            onClick={() => {
+                                                switchLanguage(lang.code);
+                                                setMobileMenuOpen(false);
+                                            }}
+                                            className={`flex-1 py-2 px-3 rounded-lg text-sm flex items-center justify-center space-x-2 transition-colors ${
+                                                locale === lang.code 
+                                                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50' 
+                                                    : 'bg-white/5 text-gray-400 border border-white/10'
+                                            }`}
+                                        >
+                                            <span>{lang.flag}</span>
+                                            <span>{lang.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
 
                             {user ? (
                                 <button

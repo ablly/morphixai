@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Calendar, Clock, ArrowLeft, ArrowRight, Share2 } from 'lucide-react';
 import type { Metadata } from 'next';
+import { FixedUI } from '@/components/FixedUI';
 
 interface Props {
   params: Promise<{ locale: string; slug: string }>;
@@ -95,28 +96,11 @@ export default async function BlogPostPage({ params }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Header */}
-      <header className="border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href={`/${locale}`} className="text-xl font-bold text-white">
-            Morphix <span className="text-cyan-400">AI</span>
-          </Link>
-          <nav className="flex items-center gap-6">
-            <Link href={`/${locale}/blog`} className="text-zinc-400 hover:text-white transition">
-              {isZh ? '博客' : 'Blog'}
-            </Link>
-            <Link 
-              href={`/${locale}/create`}
-              className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-lg text-white font-medium hover:opacity-90 transition"
-            >
-              {isZh ? '开始创作' : 'Start Creating'}
-            </Link>
-          </nav>
-        </div>
-      </header>
+      {/* Navigation */}
+      <FixedUI />
 
-      {/* Back Link */}
-      <div className="max-w-4xl mx-auto px-4 py-6">
+      {/* Back Link - 添加顶部间距 */}
+      <div className="max-w-4xl mx-auto px-4 pt-24 pb-6">
         <Link 
           href={`/${locale}/blog`}
           className="inline-flex items-center gap-2 text-zinc-400 hover:text-white transition"
@@ -127,7 +111,7 @@ export default async function BlogPostPage({ params }: Props) {
       </div>
 
       {/* Article */}
-      <article className="max-w-4xl mx-auto px-4 pb-20">
+      <article className="max-w-4xl mx-auto px-4 pb-32">
         {/* Header */}
         <header className="mb-8">
           <div className="flex flex-wrap gap-2 mb-4">

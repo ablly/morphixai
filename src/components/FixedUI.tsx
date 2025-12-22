@@ -55,6 +55,7 @@ export function FixedUI() {
         { href: localePath('/features'), label: t('features') },
         { href: localePath('/pricing'), label: t('pricing') },
         { href: localePath('/about'), label: t('about') },
+        { href: localePath('/blog'), label: t('blog') },
     ];
 
     const userLinks = [

@@ -18,6 +18,8 @@ interface FailedGeneration {
   notified: boolean;
 }
 
+const DEFAULT_CREDITS = 9; // 默认生成消耗积分
+
 const DEFAULT_EMAIL_TEMPLATES = {
   technical: '由于技术原因，您的3D模型生成未能完成。我们的团队正在调查此问题。',
   image_quality: '您上传的图片可能不太适合3D转换。建议使用清晰、光线充足、主体明确的图片重试。',
@@ -35,6 +37,7 @@ export default function FailedGenerationsPage() {
   // 邮件编辑状态
   const [emailSubject, setEmailSubject] = useState('');
   const [emailReason, setEmailReason] = useState('');
+  const [creditsToRefund, setCreditsToRefund] = useState(DEFAULT_CREDITS);
   const [selectedTemplate, setSelectedTemplate] = useState<keyof typeof DEFAULT_EMAIL_TEMPLATES>('technical');
 
   useEffect(() => {
@@ -60,6 +63,7 @@ export default function FailedGenerationsPage() {
     setSelectedGeneration(gen);
     setEmailSubject('您的3D模型生成遇到问题 - 积分已退还');
     setEmailReason(gen.error_message || DEFAULT_EMAIL_TEMPLATES.technical);
+    setCreditsToRefund(gen.credits_used > 0 ? gen.credits_used : DEFAULT_CREDITS);
     setSelectedTemplate('custom');
   };
 
@@ -85,7 +89,7 @@ export default function FailedGenerationsPage() {
           userName: selectedGeneration.user_name,
           subject: emailSubject,
           reason: emailReason,
-          creditsRefunded: selectedGeneration.credits_used,
+          creditsRefunded: creditsToRefund,
         }),
       });
       
@@ -96,6 +100,7 @@ export default function FailedGenerationsPage() {
         setSelectedGeneration(null);
         setEmailSubject('');
         setEmailReason('');
+        setCreditsToRefund(DEFAULT_CREDITS);
         alert('邮件发送成功！');
       } else {
         const data = await res.json();
@@ -197,7 +202,7 @@ export default function FailedGenerationsPage() {
                     {gen.error_message || '生成过程中发生未知错误'}
                   </p>
                   <div className="flex items-center gap-4 text-xs text-zinc-500">
-                    <span>积分: {gen.credits_used}</span>
+                    <span>积分: {gen.credits_used > 0 ? gen.credits_used : '未记录'}</span>
                     <span>时间: {new Date(gen.completed_at || gen.created_at).toLocaleString('zh-CN')}</span>
                     <span className="text-zinc-600">ID: {gen.id.slice(0, 8)}...</span>
                   </div>
@@ -258,8 +263,10 @@ export default function FailedGenerationsPage() {
                 <p className="text-white">{selectedGeneration.user_name}</p>
               </div>
               <div>
-                <p className="text-xs text-zinc-500 mb-1">退还积分</p>
-                <p className="text-green-400">{selectedGeneration.credits_used} 积分</p>
+                <p className="text-xs text-zinc-500 mb-1">记录的积分消耗</p>
+                <p className="text-zinc-400">
+                  {selectedGeneration.credits_used > 0 ? `${selectedGeneration.credits_used} 积分` : '未记录'}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-zinc-500 mb-1">失败时间</p>
@@ -280,11 +287,11 @@ export default function FailedGenerationsPage() {
             {/* 源图片 */}
             {selectedGeneration.source_image_url && (
               <div className="mb-6">
-                <p className="text-xs text-zinc-500 mb-2">源图片</p>
+                <p className="text-xs text-zinc-500 mb-2">用户上传的图片</p>
                 <img 
                   src={selectedGeneration.source_image_url} 
                   alt="Source" 
-                  className="w-32 h-32 object-cover rounded border border-zinc-700"
+                  className="max-w-xs max-h-48 object-contain rounded border border-zinc-700"
                 />
               </div>
             )}
@@ -298,6 +305,25 @@ export default function FailedGenerationsPage() {
                   <Mail className="w-4 h-4" />
                   邮件内容编辑
                 </h4>
+
+                {/* 退还积分编辑 */}
+                <div className="mb-4">
+                  <p className="text-xs text-zinc-500 mb-2">退还积分数量</p>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={creditsToRefund}
+                      onChange={(e) => setCreditsToRefund(parseInt(e.target.value) || 0)}
+                      className="w-24 bg-zinc-800 border-zinc-700"
+                    />
+                    <span className="text-zinc-400 text-sm">积分</span>
+                    <span className="text-zinc-500 text-xs ml-2">
+                      (标准生成消耗 9 积分)
+                    </span>
+                  </div>
+                </div>
 
                 {/* 快速模板 */}
                 <div className="mb-4">
@@ -381,7 +407,7 @@ export default function FailedGenerationsPage() {
                     <hr className="border-zinc-700" />
                     <p className="text-zinc-400">Hi {selectedGeneration.user_name},</p>
                     <p className="text-yellow-400">{emailReason || '(未设置原因)'}</p>
-                    <p className="text-green-400">✅ 已退还 {selectedGeneration.credits_used} 积分</p>
+                    <p className="text-green-400">✅ 已退还 {creditsToRefund} 积分</p>
                     <p className="text-zinc-400">如有问题请联系我们的支持团队。</p>
                   </div>
                 </div>

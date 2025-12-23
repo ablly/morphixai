@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { CreditsService } from '@/lib/credits/service';
+import { EmailService } from '@/lib/email/service';
 
 // Fal.ai webhook secret (optional but recommended for production)
 const FAL_WEBHOOK_SECRET = process.env.FAL_WEBHOOK_SECRET;
@@ -147,6 +148,24 @@ export async function POST(request: NextRequest) {
                     generation.credits_used, 
                     'webhook_missing_url'
                 );
+
+                // 发送失败通知邮件给管理员
+                try {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('email')
+                        .eq('id', generation.user_id)
+                        .single();
+                    
+                    await EmailService.sendGenerationFailedEmail({
+                        userId: generation.user_id,
+                        userEmail: profile?.email || 'unknown',
+                        generationId: generation.id,
+                        errorMessage: 'Model URL missing in webhook payload',
+                    });
+                } catch (emailError) {
+                    console.error('[Fal Webhook] Failed to send notification email:', emailError);
+                }
             }
 
         } else if (status === 'ERROR' || status === 'FAILED') {
@@ -169,6 +188,24 @@ export async function POST(request: NextRequest) {
                 generation.credits_used, 
                 'fal_generation_failed'
             );
+
+            // 发送失败通知邮件给管理员
+            try {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('email')
+                    .eq('id', generation.user_id)
+                    .single();
+                
+                await EmailService.sendGenerationFailedEmail({
+                    userId: generation.user_id,
+                    userEmail: profile?.email || 'unknown',
+                    generationId: generation.id,
+                    errorMessage: errorMessage,
+                });
+            } catch (emailError) {
+                console.error('[Fal Webhook] Failed to send notification email:', emailError);
+            }
         } else {
             // Unknown status - log for debugging
             console.warn('[Fal Webhook] Unknown status:', status);

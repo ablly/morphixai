@@ -8,6 +8,12 @@ import { PurchaseSuccessEmail } from './templates/purchase-success';
 import { ReferralRewardEmail } from './templates/referral-reward';
 import { GenerationCompleteEmail } from './templates/generation-complete';
 import { LowCreditsEmail } from './templates/low-credits';
+import { GenerationFailedEmail } from './templates/generation-failed';
+import { GenerationFailedUserEmail } from './templates/generation-failed-user';
+
+// 管理员邮箱
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@morphix-ai.com';
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@morphix-ai.com';
 
 export class EmailService {
   // 发送欢迎/确认注册邮件
@@ -129,6 +135,50 @@ export class EmailService {
       to,
       subject: 'Your Morphix AI credits are running low',
       react: LowCreditsEmail(data),
+    });
+  }
+
+  // 发送生成失败通知给管理员
+  static async sendGenerationFailedEmail(data: {
+    userId: string;
+    userEmail: string;
+    generationId: string;
+    errorMessage: string;
+  }) {
+    const adminUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.morphix-ai.com'}/en/admin/generations`;
+    
+    return resend.emails.send({
+      from: EMAIL_FROM,
+      to: ADMIN_EMAIL,
+      subject: `⚠️ Generation Failed - ${data.userEmail}`,
+      react: GenerationFailedEmail({
+        ...data,
+        timestamp: new Date().toISOString(),
+        adminUrl,
+      }),
+    });
+  }
+
+  // 发送生成失败通知给用户
+  static async sendGenerationFailedToUserEmail(
+    to: string,
+    data: {
+      username?: string;
+      reason: string;
+      creditsRefunded: number;
+    }
+  ) {
+    const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.morphix-ai.com'}/en/create`;
+    
+    return resend.emails.send({
+      from: EMAIL_FROM,
+      to,
+      subject: 'Your 3D generation encountered an issue - Credits refunded',
+      react: GenerationFailedUserEmail({
+        ...data,
+        supportEmail: SUPPORT_EMAIL,
+        dashboardUrl,
+      }),
     });
   }
 }

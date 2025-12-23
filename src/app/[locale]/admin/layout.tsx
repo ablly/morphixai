@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { 
   LayoutDashboard, Users, Image, CreditCard, 
-  UserPlus, LogOut, Menu, X, Loader2, Wallet, Zap 
+  UserPlus, LogOut, Menu, X, Loader2, Wallet, Zap, AlertTriangle 
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -90,6 +90,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: `/${locale}/admin`, icon: LayoutDashboard, label: '仪表盘' },
     { href: `/${locale}/admin/users`, icon: Users, label: '用户管理' },
     { href: `/${locale}/admin/generations`, icon: Image, label: '生成记录' },
+    { href: `/${locale}/admin/failed-generations`, icon: AlertTriangle, label: '失败生成' },
     { href: `/${locale}/admin/transactions`, icon: CreditCard, label: '积分交易' },
     { href: `/${locale}/admin/payments`, icon: Wallet, label: '支付记录' },
     { href: `/${locale}/admin/stripe`, icon: Zap, label: 'Stripe 实时' },

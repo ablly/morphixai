@@ -7,7 +7,9 @@ import { EmailService } from '@/lib/email/service';
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -19,10 +21,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { generationId, userId, userEmail, userName, reason, creditsRefunded } = body;
+    const { generationId, userId, userEmail, userName, subject, reason, creditsRefunded } = body;
 
     if (!generationId || !userEmail || !reason) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // 验证邮箱格式
+    if (!userEmail.includes('@') || userEmail === 'unknown') {
+      return NextResponse.json({ error: 'Invalid user email' }, { status: 400 });
     }
 
     // 发送邮件给用户
@@ -30,11 +37,12 @@ export async function POST(request: NextRequest) {
       username: userName,
       reason,
       creditsRefunded: creditsRefunded || 0,
+      subject: subject || 'Your 3D generation encountered an issue',
     });
 
     // 更新生成记录，标记已通知
     const adminClient = await createAdminClient();
-    
+
     // 先获取当前 metadata
     const { data: generation } = await adminClient
       .from('generations')
@@ -52,6 +60,7 @@ export async function POST(request: NextRequest) {
           notified_at: new Date().toISOString(),
           notified_by: user.email,
           notification_reason: reason,
+          notification_subject: subject,
         },
       })
       .eq('id', generationId);
@@ -59,8 +68,8 @@ export async function POST(request: NextRequest) {
     console.log(`[Admin] Sent failure notification to ${userEmail} for generation ${generationId}`);
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Notify error:', error);
-    return NextResponse.json({ error: 'Failed to send notification' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Failed to send notification' }, { status: 500 });
   }
 }

@@ -166,16 +166,19 @@ export class EmailService {
       username?: string;
       reason: string;
       creditsRefunded: number;
+      subject?: string;
     }
   ) {
     const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.morphix-ai.com'}/en/create`;
-    
+
     return resend.emails.send({
       from: EMAIL_FROM,
       to,
-      subject: 'Your 3D generation encountered an issue - Credits refunded',
+      subject: data.subject || 'Your 3D generation encountered an issue - Credits refunded',
       react: GenerationFailedUserEmail({
-        ...data,
+        username: data.username,
+        reason: data.reason,
+        creditsRefunded: data.creditsRefunded,
         supportEmail: SUPPORT_EMAIL,
         dashboardUrl,
       }),

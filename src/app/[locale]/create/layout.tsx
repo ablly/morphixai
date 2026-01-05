@@ -27,6 +27,10 @@ export async function generateMetadata({
         : 'Upload an image and generate high-quality 3D models instantly with AI.',
       url: `https://www.morphix-ai.com/${locale}/create`,
     },
+    robots: {
+      index: true,
+      follow: true,
+    },
   };
 }
 

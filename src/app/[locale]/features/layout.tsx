@@ -27,6 +27,10 @@ export async function generateMetadata({
         : 'Explore Morphix AI powerful 3D generation features with multiple export formats.',
       url: `https://www.morphix-ai.com/${locale}/features`,
     },
+    robots: {
+      index: true,
+      follow: true,
+    },
   };
 }
 

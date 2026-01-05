@@ -27,6 +27,10 @@ export async function generateMetadata({
         : 'Choose the right credit package and start creating 3D models.',
       url: `https://www.morphix-ai.com/${locale}/pricing`,
     },
+    robots: {
+      index: true,
+      follow: true,
+    },
   };
 }
 

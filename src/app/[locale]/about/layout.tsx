@@ -27,6 +27,10 @@ export async function generateMetadata({
         : 'Learn about Morphix AI mission and vision.',
       url: `https://www.morphix-ai.com/${locale}/about`,
     },
+    robots: {
+      index: true,
+      follow: true,
+    },
   };
 }
 

@@ -28,6 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       publishedTime: post.date,
       authors: [post.author],
       images: post.image ? [post.image] : [],
+      url: `https://www.morphix-ai.com/${locale}/blog/${slug}`,
     },
     twitter: {
       card: 'summary_large_image',
@@ -37,6 +38,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     },
     alternates: {
       canonical: `https://www.morphix-ai.com/${locale}/blog/${slug}`,
+    },
+    robots: {
+      index: true,
+      follow: true,
     },
   };
 }

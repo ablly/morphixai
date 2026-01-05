@@ -19,6 +19,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       : 'Explore the latest tutorials, tips, and news about AI 3D model generation. Learn how to convert images to 3D models.',
     alternates: {
       canonical: `https://www.morphix-ai.com/${locale}/blog`,
+      languages: {
+        en: 'https://www.morphix-ai.com/en/blog',
+        zh: 'https://www.morphix-ai.com/zh/blog',
+      },
+    },
+    robots: {
+      index: true,
+      follow: true,
     },
   };
 }

@@ -14,12 +14,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/about',     // 关于页
     '/demo',      // 演示页
     '/blog',      // 博客列表页
+    '/create',    // 创建页
   ];
 
   // 生成所有语言版本的页面
   const pages: MetadataRoute.Sitemap = [];
 
-  // 根路径
+  // 根路径 - 指向英文版
   pages.push({
     url: baseUrl,
     lastModified,
@@ -30,7 +31,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 各语言版本的页面
   for (const locale of locales) {
     for (const page of mainPages) {
-      const priority = page === '' ? 0.9 : page === '/features' ? 0.8 : page === '/blog' ? 0.8 : 0.7;
+      const priority = page === '' ? 0.9 : page === '/features' ? 0.8 : page === '/blog' ? 0.8 : page === '/create' ? 0.85 : 0.7;
       pages.push({
         url: `${baseUrl}/${locale}${page}`,
         lastModified,

@@ -3,7 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 const INDEXNOW_KEY = '225bfbbc73e540bdbbeafc7b2017515f';
 const SITE_HOST = 'www.morphix-ai.com';
 
-// 提交 URL 到 IndexNow
+// IndexNow 端点列表
+const INDEXNOW_ENDPOINTS = [
+  'https://api.indexnow.org/indexnow',
+  'https://www.bing.com/indexnow',
+  'https://yandex.com/indexnow',
+];
+
+// 提交 URL 到 IndexNow（多个搜索引擎）
 async function submitToIndexNow(urls: string[]) {
   const payload = {
     host: SITE_HOST,
@@ -12,24 +19,39 @@ async function submitToIndexNow(urls: string[]) {
     urlList: urls,
   };
 
-  const response = await fetch('https://api.indexnow.org/indexnow', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-    },
-    body: JSON.stringify(payload),
-  });
+  const results = await Promise.allSettled(
+    INDEXNOW_ENDPOINTS.map(async (endpoint) => {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+        },
+        body: JSON.stringify(payload),
+      });
+      return {
+        endpoint,
+        status: response.status,
+        ok: response.ok,
+      };
+    })
+  );
 
-  return {
-    status: response.status,
-    ok: response.ok,
-  };
+  return results.map((result, index) => {
+    if (result.status === 'fulfilled') {
+      return result.value;
+    }
+    return {
+      endpoint: INDEXNOW_ENDPOINTS[index],
+      status: 0,
+      ok: false,
+      error: result.reason?.message,
+    };
+  });
 }
 
 // GET: 手动触发提交所有重要页面
 export async function GET() {
   const importantUrls = [
-    `https://${SITE_HOST}/`,
     `https://${SITE_HOST}/en`,
     `https://${SITE_HOST}/zh`,
     `https://${SITE_HOST}/en/features`,
@@ -40,16 +62,27 @@ export async function GET() {
     `https://${SITE_HOST}/zh/about`,
     `https://${SITE_HOST}/en/create`,
     `https://${SITE_HOST}/zh/create`,
+    `https://${SITE_HOST}/en/demo`,
+    `https://${SITE_HOST}/zh/demo`,
     `https://${SITE_HOST}/en/blog`,
     `https://${SITE_HOST}/zh/blog`,
+    // 英文博客文章
+    `https://${SITE_HOST}/en/blog/ai-3d-for-game-development`,
+    `https://${SITE_HOST}/en/blog/best-ai-3d-generators-2025`,
+    `https://${SITE_HOST}/en/blog/how-to-convert-image-to-3d-model`,
+    // 中文博客文章
+    `https://${SITE_HOST}/zh/blog/ai-3d-comparison-zh`,
+    `https://${SITE_HOST}/zh/blog/image-to-3d-guide-zh`,
+    `https://${SITE_HOST}/zh/blog/ai-3d-game-dev-zh`,
   ];
 
   try {
-    const result = await submitToIndexNow(importantUrls);
+    const results = await submitToIndexNow(importantUrls);
+    const allSuccess = results.every((r) => r.ok);
     return NextResponse.json({
-      success: result.ok,
-      status: result.status,
+      success: allSuccess,
       urlsSubmitted: importantUrls.length,
+      results,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -66,11 +99,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'urls array required' }, { status: 400 });
     }
 
-    const result = await submitToIndexNow(urls);
+    const results = await submitToIndexNow(urls);
+    const allSuccess = results.every((r) => r.ok);
     return NextResponse.json({
-      success: result.ok,
-      status: result.status,
+      success: allSuccess,
       urlsSubmitted: urls.length,
+      results,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

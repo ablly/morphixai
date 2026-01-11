@@ -6,6 +6,11 @@ export const metadata: Metadata = {
     default: 'Morphix AI - AI 3D Model Generator | Image to 3D',
     template: '%s | Morphix AI',
   },
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/favicon.ico',
+  },
   description:
     'Turn text and images into high-quality 3D models instantly. The ultimate AI tool for game developers, designers and 3D artists. Export in GLB, OBJ, FBX formats. Free trial available.',
   keywords: [

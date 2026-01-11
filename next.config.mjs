@@ -30,6 +30,13 @@ const nextConfig = {
     // 重定向错误的 URL 到正确的页面
     async redirects() {
         return [
+            // 修复错误的 favicon URL（带查询参数）
+            {
+                source: '/favicon.ico',
+                has: [{ type: 'query', key: 'favicon' }],
+                destination: '/favicon.ico',
+                permanent: true,
+            },
             // 修复错误的博客 URL（中文 slug 出现在英文路径下）
             {
                 source: '/en/blog/ai-3d-comparison-zh',

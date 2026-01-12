@@ -1,12 +1,12 @@
 import { MetadataRoute } from 'next';
-import { getAllPosts, getAllPostSlugs } from '@/lib/blog';
+import { getAllPosts } from '@/lib/blog';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.morphix-ai.com';
   const locales = ['en', 'zh'];
   const lastModified = new Date();
 
-  // 主要页面
+  // 主要页面（只包含应该被索引的公开页面）
   const mainPages = [
     '',           // 首页
     '/features',  // 功能页
@@ -20,23 +20,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 生成所有语言版本的页面
   const pages: MetadataRoute.Sitemap = [];
 
-  // 根路径 - 指向英文版
-  pages.push({
-    url: baseUrl,
-    lastModified,
-    changeFrequency: 'daily',
-    priority: 1,
-  });
-
   // 各语言版本的页面
   for (const locale of locales) {
     for (const page of mainPages) {
-      const priority = page === '' ? 0.9 : page === '/features' ? 0.8 : page === '/blog' ? 0.8 : page === '/create' ? 0.85 : 0.7;
+      // 首页优先级最高
+      const priority = page === '' ? 1.0 : 
+                       page === '/features' ? 0.9 : 
+                       page === '/pricing' ? 0.9 :
+                       page === '/create' ? 0.9 :
+                       page === '/blog' ? 0.8 : 
+                       0.7;
+      
       pages.push({
         url: `${baseUrl}/${locale}${page}`,
         lastModified,
         changeFrequency: page === '' || page === '/blog' ? 'daily' : 'weekly',
         priority,
+        // 添加 alternates 帮助 Google 理解语言版本关系
+        alternates: {
+          languages: {
+            en: `${baseUrl}/en${page}`,
+            zh: `${baseUrl}/zh${page}`,
+          },
+        },
       });
     }
 

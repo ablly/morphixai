@@ -388,7 +388,10 @@ export class AdminService {
 
   // 获取支付意向记录
   static async getPaymentIntents(page = 1, limit = 20, status?: string) {
+    console.log('[AdminService] getPaymentIntents called:', { page, limit, status });
+    
     const { supabase } = await this.requireAdmin();
+    console.log('[AdminService] Admin client obtained');
     
     let query = supabase
       .from('payment_intents')
@@ -401,11 +404,23 @@ export class AdminService {
       query = query.eq('status', status);
     }
 
+    console.log('[AdminService] Executing payment_intents query...');
     const { data, count, error } = await query
       .order('created_at', { ascending: false })
       .range((page - 1) * limit, page * limit - 1);
 
-    if (error) throw error;
+    console.log('[AdminService] Query result:', { 
+      dataLength: data?.length, 
+      count, 
+      error: error?.message,
+      errorCode: error?.code,
+      errorDetails: error?.details
+    });
+
+    if (error) {
+      console.error('[AdminService] Payment intents query error:', error);
+      throw error;
+    }
 
     return {
       paymentIntents: data || [],

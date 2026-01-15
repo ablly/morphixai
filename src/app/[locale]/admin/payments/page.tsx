@@ -44,12 +44,19 @@ export default function AdminPaymentsPage() {
       if (statusFilter) params.set('status', statusFilter);
       
       const res = await fetch(`/api/admin/payment-intents?${params}`);
+      const result = await res.json();
+      
       if (res.ok) {
-        const result = await res.json();
+        console.log('[Payments] Fetched data:', result);
         setData(result);
+      } else {
+        console.error('[Payments] API error:', result);
+        // 显示错误但保持空数据状态
+        setData({ paymentIntents: [], total: 0, page: 1, totalPages: 0 });
       }
     } catch (error) {
-      console.error('Failed to fetch payment intents:', error);
+      console.error('[Payments] Failed to fetch payment intents:', error);
+      setData({ paymentIntents: [], total: 0, page: 1, totalPages: 0 });
     } finally {
       setLoading(false);
     }

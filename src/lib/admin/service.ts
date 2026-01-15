@@ -438,22 +438,35 @@ export class AdminService {
     amountCents: number,
     stripeSessionId?: string
   ) {
+    console.log('[AdminService] recordPaymentIntent called:', { userId, packageId, amountCents, stripeSessionId });
+    
     const supabase = await createAdminClient();
+    
+    const insertData = {
+      user_id: userId,
+      package_id: packageId,
+      amount_cents: amountCents,
+      stripe_session_id: stripeSessionId,
+      status: 'pending',
+    };
+    
+    console.log('[AdminService] Inserting payment intent:', insertData);
     
     const { data, error } = await supabase
       .from('payment_intents')
-      .insert({
-        user_id: userId,
-        package_id: packageId,
-        amount_cents: amountCents,
-        stripe_session_id: stripeSessionId,
-        status: 'pending',
-      })
+      .insert(insertData)
       .select()
       .single();
 
     if (error) {
-      console.error('[Admin] Failed to record payment intent:', error);
+      console.error('[AdminService] Failed to record payment intent:', {
+        error: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+    } else {
+      console.log('[AdminService] Payment intent recorded successfully:', data?.id);
     }
 
     return data;

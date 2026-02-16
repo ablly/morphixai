@@ -48,20 +48,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 记录支付意向（用户点击了购买按钮）
-    const isFirst = await StripeService.isFirstPurchase(user.id);
-    const amountCents = isFirst 
-      ? Math.round(pkg.priceUsd * FIRST_PURCHASE_DISCOUNT * 100)
-      : Math.round(pkg.priceUsd * 100);
-    
-    await AdminService.recordPaymentIntent(
-      user.id,
-      packageId,
-      amountCents,
-      result.sessionId
-    );
-
-    console.log(`[Checkout] Payment intent recorded: user=${user.email}, package=${packageId}, amount=${amountCents}`);
+    // 记录支付意向（用户点击了购买按钮）- 不阻塞支付流程
+    try {
+      const isFirst = await StripeService.isFirstPurchase(user.id);
+      const amountCents = isFirst 
+        ? Math.round(pkg.priceUsd * FIRST_PURCHASE_DISCOUNT * 100)
+        : Math.round(pkg.priceUsd * 100);
+      
+      await AdminService.recordPaymentIntent(
+        user.id,
+        packageId,
+        amountCents,
+        result.sessionId
+      );
+      console.log(`[Checkout] Payment intent recorded: user=${user.email}, package=${packageId}, amount=${amountCents}`);
+    } catch (recordError) {
+      // 记录失败不影响支付流程，后台可通过 Stripe 同步补回
+      console.error('[Checkout] Failed to record payment intent (non-blocking):', recordError);
+    }
 
     return NextResponse.json({
       sessionId: result.sessionId,
